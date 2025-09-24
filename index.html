@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>แดชบอร์ดแผนที่ประเทศไทย</title>
+    <title>Flood Impact CP-ALL Monitoring Dashboard</title>
     
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -3031,10 +3031,10 @@
             document.getElementById('kpi-affected-provinces').textContent = new Set(filteredData.map(d => d.Province)).size;
             document.getElementById('kpi-high-risk').textContent = filteredData.filter(d => d.Risk === 'สูง').length;
             document.getElementById('kpi-flooded').textContent = filteredData.filter(d => d.Status === 'ท่วม').length;
-            // NEW: Update SIM KPIs
-            document.getElementById('kpi-true').textContent = filteredData.filter(d => d.SIM === 'TRUE').length;
-            document.getElementById('kpi-dtac').textContent = filteredData.filter(d => d.SIM === 'DTAC').length;
-            document.getElementById('kpi-ais').textContent = filteredData.filter(d => d.SIM === 'AIS').length;
+            // UPDATED: Made SIM filtering case-insensitive and trim whitespace
+            document.getElementById('kpi-true').textContent = filteredData.filter(d => d.SIM && d.SIM.trim().toLowerCase() === 'true').length;
+            document.getElementById('kpi-dtac').textContent = filteredData.filter(d => d.SIM && d.SIM.trim().toLowerCase() === 'dtac').length;
+            document.getElementById('kpi-ais').textContent = filteredData.filter(d => d.SIM && d.SIM.trim().toLowerCase() === 'ais').length;
         }
 
         function updateMap() {
@@ -3205,19 +3205,19 @@
             document.getElementById(id).addEventListener('click', () => document.getElementById('resetButton').click());
         });
         
-        // NEW: Event listeners for SIM cards
+        // UPDATED: Made SIM filtering case-insensitive and trim whitespace for card clicks
         document.getElementById('card-true').addEventListener('click', () => {
-             filteredData = data.filter(d => d.SIM === 'TRUE');
+             filteredData = data.filter(d => d.SIM && d.SIM.trim().toLowerCase() === 'true');
              currentPage = 1;
              renderAll();
         });
         document.getElementById('card-dtac').addEventListener('click', () => {
-             filteredData = data.filter(d => d.SIM === 'DTAC');
+             filteredData = data.filter(d => d.SIM && d.SIM.trim().toLowerCase() === 'dtac');
              currentPage = 1;
              renderAll();
         });
         document.getElementById('card-ais').addEventListener('click', () => {
-             filteredData = data.filter(d => d.SIM === 'AIS');
+             filteredData = data.filter(d => d.SIM && d.SIM.trim().toLowerCase() === 'ais');
              currentPage = 1;
              renderAll();
         });
