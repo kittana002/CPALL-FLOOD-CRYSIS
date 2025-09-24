@@ -341,6 +341,7 @@
         </header>
 
         <div class="summary-container">
+            <!-- Summary Cards เดิม -->
             <div class="summary-card" id="card-total-stores">
                 <div class="icon" style="background-color: #e0e7ff; color: #4338ca;">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h6.375a.75.75 0 01.75.75v11.25a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75V7.5a.75.75 0 01.75-.75z" /></svg>
@@ -360,21 +361,55 @@
                 </div>
             </div>
              <div class="summary-card" id="card-high-risk">
-                <div class="icon" style="background-color: #ffedd5; color: #9a3412;">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" /></svg>
+                 <div class="icon" style="background-color: #ffedd5; color: #9a3412;">
+                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" /></svg>
+                 </div>
+                 <div class="text-content">
+                     <div id="high-risk-stores" class="value">0</div>
+                     <div class="label">สาขาเสี่ยงสูง (ยังไม่ท่วม)</div>
+                 </div>
+             </div>
+             <div class="summary-card" id="card-flooded">
+                 <div class="icon" style="background-color: #fee2e2; color: #b91c1c;">
+                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" /></svg>
+                 </div>
+                 <div class="text-content">
+                     <div id="flooded-stores" class="value">0</div>
+                     <div class="label">สาขาที่ท่วม</div>
+                 </div>
+             </div>
+             <!-- เพิ่มการ์ดใหม่สำหรับข้อมูล SIM -->
+            <div class="summary-card" id="card-true-sim">
+                <div class="icon" style="background-color: #ccfbf1; color: #14b8a6;">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.125 2.25h-3.875a1.125 1.125 0 00-1.125 1.125v16.5a1.125 1.125 0 001.125 1.125h3.875m-3.875 0c-.621 0-1.125-.504-1.125-1.125V5.25a1.125 1.125 0 011.125-1.125h3.875m-3.875 0c-.621 0-1.125.504-1.125 1.125v16.5a1.125 1.125 0 001.125 1.125h3.875M12 9h.008v.008H12zM12 12h.008v.008H12zM12 15h.008v.008H12zM12 18h.008v.008H12zM12 21h.008v.008H12z"/>
+                    </svg>
                 </div>
                 <div class="text-content">
-                    <div id="high-risk-stores" class="value">0</div>
-                    <div class="label">สาขาเสี่ยงสูง (ยังไม่ท่วม)</div>
+                    <div id="true-sims" class="value">0</div>
+                    <div class="label">สาขาใช้ TRUE SIM</div>
                 </div>
             </div>
-            <div class="summary-card" id="card-flooded">
-                <div class="icon" style="background-color: #fee2e2; color: #b91c1c;">
-                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" /></svg>
+            <div class="summary-card" id="card-ais-sim">
+                <div class="icon" style="background-color: #fce7f3; color: #be185d;">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.125 2.25h-3.875a1.125 1.125 0 00-1.125 1.125v16.5a1.125 1.125 0 001.125 1.125h3.875m-3.875 0c-.621 0-1.125-.504-1.125-1.125V5.25a1.125 1.125 0 011.125-1.125h3.875m-3.875 0c-.621 0-1.125.504-1.125 1.125v16.5a1.125 1.125 0 001.125 1.125h3.875M12 9h.008v.008H12zM12 12h.008v.008H12zM12 15h.008v.008H12zM12 18h.008v.008H12zM12 21h.008v.008H12z"/>
+                    </svg>
                 </div>
                 <div class="text-content">
-                    <div id="flooded-stores" class="value">0</div>
-                    <div class="label">สาขาที่ท่วม</div>
+                    <div id="ais-sims" class="value">0</div>
+                    <div class="label">สาขาใช้ AIS SIM</div>
+                </div>
+            </div>
+            <div class="summary-card" id="card-dtac-sim">
+                <div class="icon" style="background-color: #e0f2fe; color: #3b82f6;">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.125 2.25h-3.875a1.125 1.125 0 00-1.125 1.125v16.5a1.125 1.125 0 001.125 1.125h3.875m-3.875 0c-.621 0-1.125-.504-1.125-1.125V5.25a1.125 1.125 0 011.125-1.125h3.875m-3.875 0c-.621 0-1.125.504-1.125 1.125v16.5a1.125 1.125 0 001.125 1.125h3.875M12 9h.008v.008H12zM12 12h.008v.008H12zM12 15h.008v.008H12zM12 18h.008v.008H12zM12 21h.008v.008H12z"/>
+                    </svg>
+                </div>
+                <div class="text-content">
+                    <div id="dtac-sims" class="value">0</div>
+                    <div class="label">สาขาใช้ Dtac SIM</div>
                 </div>
             </div>
         </div>
@@ -402,15 +437,15 @@
                     <svg id="chart"></svg>
                 </div>
                  <div class="chart-legend">
-                    <div class="legend-item">
-                        <div class="legend-color" style="background-color: var(--status-flooded-fill);"></div>
-                        <span>ท่วม</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background-color: var(--status-not-flooded-fill);"></div>
-                        <span>ยังไม่ท่วม</span>
-                    </div>
-                </div>
+                     <div class="legend-item">
+                         <div class="legend-color" style="background-color: var(--status-flooded-fill);"></div>
+                         <span>ท่วม</span>
+                     </div>
+                     <div class="legend-item">
+                         <div class="legend-color" style="background-color: var(--status-not-flooded-fill);"></div>
+                         <span>ยังไม่ท่วม</span>
+                     </div>
+                 </div>
             </div>
         </div>
         
@@ -422,6 +457,8 @@
                         <tr>
                             <th>รหัสสาขา</th>
                             <th>ชื่อสาขา</th>
+                            <!-- เพิ่มคอลัมน์ใหม่สำหรับข้อมูล SIM -->
+                            <th>SIM ที่ใช้งาน</th>
                             <th>จังหวัด</th>
                             <th>ความเสี่ยง</th>
                             <th>สถานะ</th>
@@ -3233,19 +3270,19 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(updateDateTime, 1000);
     
     function parseDetailedData(data) {
-        return data.trim().split('\n').map(line => {
-            const parts = line.trim().split(/\s+/);
-            const status = parts.pop();
-            const risk = parts.pop();
-            const simIndex = parts.findIndex(p => ['TRUE', 'AIS', 'Dtac'].includes(p));
-            if (simIndex === -1) return null;
+        return data.trim().split('\n').slice(1).map(line => {
+            const parts = line.split('\t');
+            if (parts.length < 6) return null; // Ensure there are enough parts
 
             const id_shop = parts[0];
-            const storeName = parts.slice(1, simIndex).join(' ');
-            const province = parts[simIndex + 1];
-            const address = parts.slice(simIndex + 2).join(' ');
+            const storeName = parts[1];
+            const sim = parts[2]; // Get the SIM data
+            const province = parts[3];
+            const address = parts[4];
+            const risk = parts[5];
+            const status = parts[6];
 
-            return { id_shop, storeName, province, address, risk, status };
+            return { id_shop, storeName, sim, province, address, risk, status };
         }).filter(item => item !== null);
     }
 
@@ -3274,10 +3311,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const floodedStores = data.reduce((sum, p) => sum + p.floodedCount, 0);
         const highRiskStores = data.reduce((sum, p) => sum + p.highRiskCount, 0);
         
+        // Calculate SIM counts
+        const trueSimCount = detailedList.filter(item => item.sim === 'TRUE').length;
+        const aisSimCount = detailedList.filter(item => item.sim === 'AIS').length;
+        const dtacSimCount = detailedList.filter(item => item.sim === 'Dtac').length;
+
         document.getElementById('total-stores').textContent = detailedList.length;
         document.getElementById('affected-provinces').textContent = data.length;
         document.getElementById('flooded-stores').textContent = floodedStores;
         document.getElementById('high-risk-stores').textContent = highRiskStores;
+
+        // Update new SIM cards
+        document.getElementById('true-sims').textContent = trueSimCount;
+        document.getElementById('ais-sims').textContent = aisSimCount;
+        document.getElementById('dtac-sims').textContent = dtacSimCount;
     }
 
     function renderTable() {
@@ -3300,6 +3347,7 @@ document.addEventListener('DOMContentLoaded', () => {
             row.innerHTML = `
                 <td>${item.id_shop}</td>
                 <td>${item.storeName}</td>
+                <td>${item.sim}</td>
                 <td>${item.province}</td>
                 <td><span class="status-badge risk-badge ${riskClass}">${item.risk}</span></td>
                 <td><span class="status-badge ${statusClass}">${item.status}</span></td>
@@ -3464,6 +3512,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const filteredData = fullDetailedData.filter(item => {
                 return (String(item.id_shop).toLowerCase().includes(query) ||
                         item.storeName.toLowerCase().includes(query) ||
+                        item.sim.toLowerCase().includes(query) ||
                         item.province.toLowerCase().includes(query) ||
                         item.address.toLowerCase().includes(query) ||
                         item.risk.toLowerCase().includes(query) ||
@@ -3503,6 +3552,26 @@ document.addEventListener('DOMContentLoaded', () => {
              clearBtn.style.display = 'none';
              updateDashboard(fullDetailedData);
         });
+
+        // Event listeners for the new SIM cards
+        document.getElementById('card-true-sim').addEventListener('click', () => {
+            const filtered = fullDetailedData.filter(item => item.sim === 'TRUE');
+            searchInput.value = 'SIM: TRUE';
+            clearBtn.style.display = 'inline-block';
+            updateDashboard(filtered);
+        });
+        document.getElementById('card-ais-sim').addEventListener('click', () => {
+            const filtered = fullDetailedData.filter(item => item.sim === 'AIS');
+            searchInput.value = 'SIM: AIS';
+            clearBtn.style.display = 'inline-block';
+            updateDashboard(filtered);
+        });
+        document.getElementById('card-dtac-sim').addEventListener('click', () => {
+            const filtered = fullDetailedData.filter(item => item.sim === 'Dtac');
+            searchInput.value = 'SIM: Dtac';
+            clearBtn.style.display = 'inline-block';
+            updateDashboard(filtered);
+        });
     }
 
     async function initializeDashboard() {
@@ -3532,4 +3601,3 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </body>
 </html>
-
