@@ -75,6 +75,12 @@
         <header class="mb-8 flex flex-col md:flex-row justify-between items-center">
             <!-- UPDATED: font-bold to font-semibold -->
             <h1 class="text-3xl font-semibold text-on-surface mb-4 md:mb-0">แดชบอร์ดสรุปสถานการณ์สาขา</h1>
+            
+            <!-- NEW: Clock Display -->
+            <div id="clock" class="text-center text-on-surface-muted font-semibold text-lg mb-4 md:mb-0">
+                <!-- Clock will be rendered here by JS -->
+            </div>
+
             <div class="flex items-center space-x-2 w-full md:w-auto">
                 <input type="text" id="searchInput" placeholder="ค้นหาข้อมูล..." class="w-full md:w-64 px-4 py-2 bg-surface border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
                 <button id="resetButton" class="px-4 py-2 bg-primary text-white font-semibold rounded-lg hover:bg-primary-dark transition duration-300">รีเซ็ต</button>
@@ -215,7 +221,8 @@
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         // --- 1. DATA SETUP ---
-        const csvData = `ID_Shop	Store_Name	SIM	Province	Address	Risk	Status
+        // UPDATED: Changed to Tab-Separated Values (TSV) format for easier copy-pasting
+        const tsvData = `ID_Shop	Store_Name	SIM	Province	Address	Risk	Status
 1122	ร้านเซเว่น สาขา กลางเมือง(จ.ขอนแก่น)	TRUE	ขอนแก่น	เลขที่ 54/19-20 ถ.กลางเมือง ในเมือง เมืองขอนแก่น ขอนแก่น 40000	ต่ำ	ยังไม่ท่วม
 161	ร้านเซเว่น สาขา บ้านแพน	TRUE	พระนครศรีอยุธยา	เลขที่ - ก.431 CP ALL (รหัสร้าน_161) บ้านแพน วิไลเสนา เสนา เสนา พระนครศรีอยุธยา 13110	ปานกลาง	ยังไม่ท่วม
 1127	ร้านเซเว่น สาขา เทคนิคขอนแก่น	TRUE	ขอนแก่น	เลขที่ 182/54 ถ.ศรีจันทร์ ในเมือง เมืองขอนแก่น ขอนแก่น 40000	ต่ำ	ยังไม่ท่วม
@@ -2972,7 +2979,7 @@
 18864	ร้านเซเว่น สาขา ชุมชนหนองจอก(บ้านไร่)	TRUE	อุทัยธานี	เลขที่ - โฉนด รหัสสาขา 18864 7-11 ชุมชนหนองจอก - หนองจอก บ้านไร่ อุทัยธานี 61180	ปานกลาง	ยังไม่ท่วม
 23092	ร้านเซเว่น สาขา ถนนบริรักษ์ อุทัยธานี	AIS	อุทัยธานี	เลขที่ - ร้าน 7-11 รหัสสาขา 23092 ถนนบริรักษ์ อุทัยธานี - อุทัยใหม่ เมืองอุทัยธานี อุทัยธานี 61000	ปานกลาง	ยังไม่ท่วม`;
 
-        const data = d3_csv_parser(csvData);
+        const data = tsv_parser(tsvData); // UPDATED: Using new TSV parser
         let filteredData = [...data];
         let currentPage = 1;
         const itemsPerPage = 10;
@@ -3143,11 +3150,12 @@
         }
 
         // --- UTILITY FUNCTIONS ---
-        function d3_csv_parser(csv) {
-            const lines = csv.split('\n').filter(Boolean);
-            const headers = lines[0].split(',').map(h => h.trim());
+        // UPDATED: Renamed function and changed delimiter to Tab for robustness
+        function tsv_parser(text) {
+            const lines = text.split('\n').filter(Boolean);
+            const headers = lines[0].split('\t').map(h => h.trim());
             return lines.slice(1).map(line => {
-                const values = line.split(',');
+                const values = line.split('\t');
                 return headers.reduce((obj, header, i) => {
                     obj[header] = values[i] ? values[i].trim() : '';
                     return obj;
@@ -3218,6 +3226,20 @@
         document.getElementById('nextPage').addEventListener('click', () => {
             if ((currentPage * itemsPerPage) < filteredData.length) { currentPage++; updateTable(); }
         });
+
+        // --- 7. CLOCK FUNCTIONALITY ---
+        const clockElement = document.getElementById('clock');
+        function updateClock() {
+            const now = new Date();
+            const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const formattedDate = new Intl.DateTimeFormat('th-TH-u-ca-buddhist', dateOptions).format(now);
+            const formattedTime = now.toLocaleTimeString('th-TH', { hour12: false });
+            
+            clockElement.innerHTML = `<div>${formattedDate}</div><div>${formattedTime}</div>`;
+        }
+
+        updateClock();
+        setInterval(updateClock, 1000);
     });
     </script>
 </body>
