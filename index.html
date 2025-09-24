@@ -202,12 +202,16 @@
             font-weight: 700;
         }
 
-        #map-container {
-            position: relative;
+        #map-container-card {
             height: 750px;
-            overflow: hidden; /* This is the key fix */
         }
 
+        .map-wrapper {
+            position: relative;
+            flex-grow: 1;
+            overflow: hidden; /* This is the key fix */
+        }
+        
         .map-legend {
             position: absolute;
             bottom: 20px;
@@ -288,7 +292,7 @@
         }
 
         .map-controls {
-            position: absolute; top: 85px; right: 25px; z-index: 10;
+            position: absolute; top: 10px; right: 10px; z-index: 10;
         }
 
         #reset-zoom-btn {
@@ -376,18 +380,20 @@
         </div>
 
         <div class="dashboard-container">
-            <div id="map-container" class="card">
+            <div id="map-container-card" class="card">
                 <h2>แผนที่ภาพรวมสถานการณ์</h2>
-                <div class="map-controls">
-                    <button id="reset-zoom-btn" title="รีเฟรชมุมมอง">รีเฟรช</button>
-                </div>
-                <svg id="map" width="100%" height="100%"></svg>
-                 <div class="map-legend">
-                    <h4>สัญลักษณ์</h4>
-                    <div class="legend-item"><div class="legend-color" style="background-color: var(--status-flooded-fill);"></div>ท่วม</div>
-                    <div class="legend-item"><div class="legend-color" style="background-color: var(--risk-high-fill);"></div>เสี่ยงสูง</div>
-                    <div class="legend-item"><div class="legend-color" style="background-color: var(--risk-medium-fill);"></div>เสี่ยงปานกลาง</div>
-                    <div class="legend-item"><div class="legend-color" style="background-color: var(--risk-low-fill);"></div>เสี่ยงต่ำ</div>
+                <div class="map-wrapper">
+                    <div class="map-controls">
+                        <button id="reset-zoom-btn" title="รีเฟรชมุมมอง">รีเฟรช</button>
+                    </div>
+                    <svg id="map" width="100%" height="100%"></svg>
+                    <div class="map-legend">
+                        <h4>สัญลักษณ์</h4>
+                        <div class="legend-item"><div class="legend-color" style="background-color: var(--status-flooded-fill);"></div>ท่วม</div>
+                        <div class="legend-item"><div class="legend-color" style="background-color: var(--risk-high-fill);"></div>เสี่ยงสูง</div>
+                        <div class="legend-item"><div class="legend-color" style="background-color: var(--risk-medium-fill);"></div>เสี่ยงปานกลาง</div>
+                        <div class="legend-item"><div class="legend-color" style="background-color: var(--risk-low-fill);"></div>เสี่ยงต่ำ</div>
+                    </div>
                 </div>
             </div>
             <div id="chart-container" class="card">
@@ -3526,6 +3532,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </body>
 </html>
-
-
 
