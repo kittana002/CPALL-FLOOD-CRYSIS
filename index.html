@@ -374,7 +374,10 @@
         const data = tsv_parser(tsvData);
         let filteredData = [...data];
         let currentPage = 1;
-        const itemsPerPage = 10;
+        
+        // --- UPDATED: เปลี่ยนจาก 10 เป็น 50 ตามที่ขอครับ ---
+        const itemsPerPage = 50;
+        
         let thailandGeoJsonData = null;
 
         // --- 2. MAP SETUP ---
