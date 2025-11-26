@@ -5,216 +5,130 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flood Impact CP-ALL Monitoring Dashboard</title>
     
-    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Leaflet for interactive map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     
-    <!-- Chart.js for charts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <script>
-        // Tailwind custom theme configuration for LIGHT THEME
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        'primary': '#0d9488', // teal-600
-                        'primary-dark': '#0f766e', // teal-700
-                        'background': '#f1f5f9', // slate-100
-                        'surface': '#ffffff', // white
-                        'on-surface': '#1e293b', // slate-800
-                        'on-surface-muted': '#64748b', // slate-500
+                        'primary': '#0d9488',
+                        'primary-dark': '#0f766e',
+                        'background': '#f1f5f9',
+                        'surface': '#ffffff',
+                        'on-surface': '#1e293b',
+                        'on-surface-muted': '#64748b',
                     }
                 }
             }
         }
     </script>
     
-    <!-- Custom Styles -->
     <style>
-        /* UPDATED: Changed font to Sarabun for a more formal look */
         @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
-        body {
-            font-family: 'Sarabun', sans-serif;
-        }
-        #map {
-            height: 600px;
-            width: 100%;
-            border-radius: 0.5rem;
-        }
-        .leaflet-tooltip {
-            background-color: rgba(255, 255, 255, 0.9);
-            border: 1px solid #e2e8f0; /* slate-200 */
-            color: #1e293b; /* on-surface */
-            border-radius: 4px;
-            padding: 8px;
-            font-weight: bold;
-        }
-        .leaflet-popup-content-wrapper {
-            background-color: #ffffff; /* surface */
-            color: #1e293b; /* on-surface */
-            border-radius: 8px;
-        }
-        .leaflet-popup-tip {
-             background-color: #ffffff; /* surface */
-        }
-        /* Style for custom SVG icons */
-        .leaflet-div-icon {
-            background: transparent !important;
-            border: none !important;
-        }
+        body { font-family: 'Sarabun', sans-serif; }
+        #map { height: 600px; width: 100%; border-radius: 0.5rem; z-index: 1; }
+        .leaflet-tooltip { font-family: 'Sarabun', sans-serif; font-weight: 600; }
+        /* Fix for map markers overlap */
+        .leaflet-div-icon { background: transparent !important; border: none !important; }
     </style>
 </head>
 <body class="bg-background text-on-surface">
 
     <div class="container mx-auto p-4 md:p-6">
         
-        <!-- Header -->
-        <header class="mb-8 flex flex-col md:flex-row justify-between items-center">
+        <header class="mb-8 flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-lg shadow-sm">
             <div class="flex items-center mb-4 md:mb-0">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/7-eleven_logo.svg/244px-7-eleven_logo.svg.png" alt="7-Eleven Logo" class="h-12 mr-4">
-                <h1 class="text-3xl font-semibold text-on-surface">Flood Impact CP-ALL Monitoring Dashboard</h1>
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/7-eleven_logo.svg/244px-7-eleven_logo.svg.png" alt="7-Eleven Logo" class="h-10 mr-4">
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold text-on-surface">Flood Impact Monitor</h1>
+                    <p class="text-sm text-on-surface-muted">Dashboard ติดตามสถานะร้านสาขาภาคใต้</p>
+                </div>
             </div>
             
-            <!-- NEW: Clock Display -->
-            <div id="clock" class="text-center text-on-surface-muted font-semibold text-lg mb-4 md:mb-0">
-                <!-- Clock will be rendered here by JS -->
-            </div>
-
-            <div class="flex items-center space-x-2 w-full md:w-auto">
-                <input type="text" id="searchInput" placeholder="ค้นหาข้อมูล..." class="w-full md:w-64 px-4 py-2 bg-surface border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-                <button id="resetButton" class="px-4 py-2 bg-primary text-white font-semibold rounded-lg hover:bg-primary-dark transition duration-300">รีเซ็ต</button>
+            <div class="flex flex-col items-end">
+                <div id="clock" class="text-right text-lg font-bold text-primary mb-2"></div>
+                <div class="flex items-center space-x-2 w-full md:w-auto">
+                    <input type="text" id="searchInput" placeholder="ค้นหา สาขา/จังหวัด..." class="w-full md:w-64 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm">
+                    <button id="resetButton" class="px-4 py-2 bg-slate-600 text-white font-semibold rounded-lg hover:bg-slate-700 transition duration-300 text-sm whitespace-nowrap">รีเซ็ตทั้งหมด</button>
+                </div>
             </div>
         </header>
 
-        <!-- KPI Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <!-- Card 1 -->
-            <div id="card-total" class="bg-surface p-5 rounded-lg shadow-md border-l-4 border-primary cursor-pointer hover:bg-slate-50 transition flex items-center space-x-4">
-                <div class="bg-primary/10 p-3 rounded-full">
-                    <svg class="w-6 h-6 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
-                </div>
-                <div>
-                    <h3 class="text-on-surface-muted text-sm font-medium uppercase">สาขาทั้งหมด</h3>
-                    <!-- UPDATED: font-bold to font-semibold -->
-                    <p id="kpi-total-stores" class="text-3xl font-semibold text-on-surface">0</p>
-                </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div id="card-total" class="bg-surface p-4 rounded-lg shadow-sm border-b-4 border-primary cursor-pointer hover:shadow-md transition">
+                <p class="text-xs font-bold text-on-surface-muted uppercase tracking-wider">สาขาทั้งหมด</p>
+                <p id="kpi-total-stores" class="text-3xl font-bold text-on-surface mt-1">0</p>
             </div>
-            <!-- Card 2 -->
-             <div id="card-provinces" class="bg-surface p-5 rounded-lg shadow-md border-l-4 border-sky-500 cursor-pointer hover:bg-slate-50 transition flex items-center space-x-4">
-                 <div class="bg-sky-500/10 p-3 rounded-full">
-                    <svg class="w-6 h-6 text-sky-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m6-6v8.25m.5-13.5-3 3m3-3-3 3m3-3l3 3m-3-3-3 3m-3 6.75h6m-6 3h6m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                 </div>
-                 <div>
-                    <h3 class="text-on-surface-muted text-sm font-medium uppercase">จังหวัดที่กระทบ</h3>
-                     <!-- UPDATED: font-bold to font-semibold -->
-                    <p id="kpi-affected-provinces" class="text-3xl font-semibold text-on-surface">0</p>
-                </div>
+            <div id="card-provinces" class="bg-surface p-4 rounded-lg shadow-sm border-b-4 border-sky-500 cursor-pointer hover:shadow-md transition">
+                <p class="text-xs font-bold text-on-surface-muted uppercase tracking-wider">จังหวัดที่กระทบ</p>
+                <p id="kpi-affected-provinces" class="text-3xl font-bold text-on-surface mt-1">0</p>
             </div>
-             <!-- Card 3 -->
-            <div id="card-high-risk" class="bg-surface p-5 rounded-lg shadow-md border-l-4 border-amber-500 cursor-pointer hover:bg-slate-50 transition flex items-center space-x-4">
-                 <div class="bg-amber-500/10 p-3 rounded-full">
-                     <svg class="w-6 h-6 text-amber-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" /></svg>
-                 </div>
-                <div>
-                    <h3 class="text-on-surface-muted text-sm font-medium uppercase">สาขาเสี่ยงสูง</h3>
-                     <!-- UPDATED: font-bold to font-semibold -->
-                    <p id="kpi-high-risk" class="text-3xl font-semibold text-on-surface">0</p>
-                </div>
+            <div id="card-high-risk" class="bg-surface p-4 rounded-lg shadow-sm border-b-4 border-amber-500 cursor-pointer hover:shadow-md transition">
+                <p class="text-xs font-bold text-on-surface-muted uppercase tracking-wider">เสี่ยงสูง / ปานกลาง</p>
+                <p id="kpi-high-risk" class="text-3xl font-bold text-amber-600 mt-1">0</p>
             </div>
-             <!-- Card 4 -->
-            <div id="card-flooded" class="bg-surface p-5 rounded-lg shadow-md border-l-4 border-red-500 cursor-pointer hover:bg-slate-50 transition flex items-center space-x-4">
-                 <div class="bg-red-500/10 p-3 rounded-full">
-                    <svg class="w-6 h-6 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
-                 </div>
-                 <div>
-                    <h3 class="text-on-surface-muted text-sm font-medium uppercase">สาขาที่Yes</h3>
-                     <!-- UPDATED: font-bold to font-semibold -->
-                    <p id="kpi-flooded" class="text-3xl font-semibold text-on-surface">0</p>
-                </div>
+            <div id="card-flooded" class="bg-surface p-4 rounded-lg shadow-sm border-b-4 border-red-500 cursor-pointer hover:shadow-md transition">
+                <p class="text-xs font-bold text-on-surface-muted uppercase tracking-wider">น้ำท่วมแล้ว (Yes)</p>
+                <p id="kpi-flooded" class="text-3xl font-bold text-red-600 mt-1">0</p>
             </div>
         </div>
         
-        <!-- NEW: SIM Provider Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-             <!-- Card TRUE -->
-            <div id="card-true" class="bg-surface p-5 rounded-lg shadow-md border-l-4 border-red-600 cursor-pointer hover:bg-slate-50 transition flex items-center space-x-4">
-                <div class="bg-red-600/10 p-3 rounded-full">
-                    <svg class="w-6 h-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" /></svg>
-                </div>
-                <div>
-                    <h3 class="text-on-surface-muted text-sm font-medium uppercase">TRUE</h3>
-                    <p id="kpi-true" class="text-3xl font-semibold text-on-surface">0</p>
-                </div>
+        <div class="grid grid-cols-3 gap-4 mb-8">
+            <div id="card-true" class="bg-surface p-3 rounded-lg shadow-sm border border-slate-200 cursor-pointer hover:border-red-500 hover:bg-red-50 transition text-center">
+                <span class="text-xs font-bold text-on-surface-muted">TRUE</span>
+                <p id="kpi-true" class="text-xl font-bold text-red-600">0</p>
             </div>
-             <!-- Card DTAC -->
-            <div id="card-dtac" class="bg-surface p-5 rounded-lg shadow-md border-l-4 border-sky-400 cursor-pointer hover:bg-slate-50 transition flex items-center space-x-4">
-                <div class="bg-sky-400/10 p-3 rounded-full">
-                    <svg class="w-6 h-6 text-sky-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" /></svg>
-                </div>
-                <div>
-                    <h3 class="text-on-surface-muted text-sm font-medium uppercase">DTAC</h3>
-                    <p id="kpi-dtac" class="text-3xl font-semibold text-on-surface">0</p>
-                </div>
+            <div id="card-dtac" class="bg-surface p-3 rounded-lg shadow-sm border border-slate-200 cursor-pointer hover:border-sky-500 hover:bg-sky-50 transition text-center">
+                <span class="text-xs font-bold text-on-surface-muted">DTAC</span>
+                <p id="kpi-dtac" class="text-xl font-bold text-sky-500">0</p>
             </div>
-             <!-- Card AIS -->
-            <div id="card-ais" class="bg-surface p-5 rounded-lg shadow-md border-l-4 border-green-500 cursor-pointer hover:bg-slate-50 transition flex items-center space-x-4">
-                <div class="bg-green-500/10 p-3 rounded-full">
-                    <svg class="w-6 h-6 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" /></svg>
-                </div>
-                <div>
-                    <h3 class="text-on-surface-muted text-sm font-medium uppercase">AIS</h3>
-                    <p id="kpi-ais" class="text-3xl font-semibold text-on-surface">0</p>
-                </div>
+            <div id="card-ais" class="bg-surface p-3 rounded-lg shadow-sm border border-slate-200 cursor-pointer hover:border-green-500 hover:bg-green-50 transition text-center">
+                <span class="text-xs font-bold text-on-surface-muted">AIS</span>
+                <p id="kpi-ais" class="text-xl font-bold text-green-600">0</p>
             </div>
         </div>
 
-
-        <!-- Main Content: Map and Chart -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            <div class="lg:col-span-2 bg-surface p-4 rounded-lg shadow-md">
-                 <!-- UPDATED: font-bold to font-semibold -->
-                <h2 class="text-xl font-semibold mb-4 text-on-surface">แผนที่แสดงสถานะตามจังหวัด</h2>
+            <div class="lg:col-span-2 bg-surface p-1 rounded-lg shadow-md border border-slate-200">
                 <div id="map"></div>
             </div>
-            <div class="bg-surface p-4 rounded-lg shadow-md">
-                 <!-- UPDATED: font-bold to font-semibold -->
-                <h2 class="text-xl font-semibold mb-4 text-on-surface">จำนวนสาขาในแต่ละจังหวัด</h2>
-                <div class="relative h-[26rem] w-full">
+            
+            <div class="bg-surface p-4 rounded-lg shadow-md border border-slate-200 flex flex-col">
+                <h2 class="text-lg font-bold mb-4 text-on-surface">สถานะตามจังหวัด</h2>
+                <div class="relative flex-grow min-h-[300px]">
                     <canvas id="provinceChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- Data Table -->
-        <div class="bg-surface p-4 rounded-lg shadow-md">
-             <!-- UPDATED: font-bold to font-semibold -->
-            <h2 class="text-xl font-semibold mb-4 text-on-surface">ตารางข้อมูลสาขา</h2>
+        <div class="bg-surface p-4 rounded-lg shadow-md border border-slate-200">
+            <h2 class="text-lg font-bold mb-4 text-on-surface">รายชื่อสาขา</h2>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left text-on-surface-muted">
-                    <thead class="text-xs text-on-surface uppercase bg-slate-50">
+                    <thead class="text-xs text-on-surface uppercase bg-slate-100">
                         <tr>
-                            <th scope="col" class="px-6 py-3">ID</th>
-                            <th scope="col" class="px-6 py-3">ชื่อร้าน</th>
-                            <th scope="col" class="px-6 py-3">SIM</th>
-                            <th scope="col" class="px-6 py-3">จังหวัด</th>
-                            <th scope="col" class="px-6 py-3">ความเสี่ยง</th>
-                            <th scope="col" class="px-6 py-3">สถานะ</th>
+                            <th scope="col" class="px-4 py-3">ID</th>
+                            <th scope="col" class="px-4 py-3">ชื่อร้าน</th>
+                            <th scope="col" class="px-4 py-3">SIM</th>
+                            <th scope="col" class="px-4 py-3">จังหวัด</th>
+                            <th scope="col" class="px-4 py-3">ความเสี่ยง</th>
+                            <th scope="col" class="px-4 py-3 text-center">สถานะ</th>
                         </tr>
                     </thead>
-                    <tbody id="dataTableBody">
-                        <!-- Rows will be inserted by JavaScript -->
-                    </tbody>
+                    <tbody id="dataTableBody"></tbody>
                 </table>
             </div>
-            <!-- Pagination -->
-            <div class="flex justify-between items-center mt-4">
-                <span id="pageInfo" class="text-sm text-on-surface-muted"></span>
-                <div class="inline-flex">
-                    <button id="prevPage" class="px-4 py-2 text-sm font-medium text-on-surface bg-surface border border-slate-300 rounded-l-lg hover:bg-slate-100">ก่อนหน้า</button>
-                    <button id="nextPage" class="px-4 py-2 text-sm font-medium text-on-surface bg-surface border-t border-b border-r border-slate-300 rounded-r-lg hover:bg-slate-100">ถัดไป</button>
+            <div class="flex justify-between items-center mt-4 pt-4 border-t border-slate-100">
+                <span id="pageInfo" class="text-xs text-on-surface-muted"></span>
+                <div class="inline-flex rounded-md shadow-sm">
+                    <button id="prevPage" class="px-3 py-1 text-sm font-medium bg-white border border-slate-300 rounded-l-lg hover:bg-slate-50">ก่อนหน้า</button>
+                    <button id="nextPage" class="px-3 py-1 text-sm font-medium bg-white border-t border-b border-r border-slate-300 rounded-r-lg hover:bg-slate-50">ถัดไป</button>
                 </div>
             </div>
         </div>
@@ -222,8 +136,8 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // --- 1. DATA SETUP ---
-        // UPDATED: Replaced with new, correctly formatted TSV data
+        
+        // --- 1. DATA & CONFIGURATION ---
         const tsvData = `ID_Shop	Store_Name	SIM	Province	Address	Risk	Status
 19222	ร้านเซเว่น สาขา ห้วยโอน	TRUE	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 19222 ห้วยโอน - กำแพงเพชร รัตภูมิ สงขลา 90180			ปานกลาง	No/Online
 622	ร้านเซเว่น สาขา ศุภสารรังสรรค์	TRUE	สงขลา	เลขที่ - 176 CP ALL (รหัสร้าน_622) ศุภสารรังสรรค์ - หาดใหญ่ หาดใหญ่ สงขลา 90110			สูง	Yes
@@ -457,43 +371,57 @@
 23271							ปานกลาง	Checking..
 23346							สูง	Checking..`;
 
-        const data = tsv_parser(tsvData); // UPDATED: Using new TSV parser
+        const data = tsv_parser(tsvData);
         let filteredData = [...data];
         let currentPage = 1;
         const itemsPerPage = 10;
+        let thailandGeoJsonData = null;
 
-        // --- 2. MAP INITIALIZATION (Leaflet) ---
-        const map = L.map('map').setView([13.7563, 100.5018], 6);
-        const initialZoom = map.getZoom();
-        const initialCenter = map.getCenter();
+        // --- 2. MAP SETUP ---
+        // เริ่มต้นที่ภาคใต้เพราะข้อมูลเน้นภาคใต้
+        const map = L.map('map').setView([7.00, 100.50], 8);
+        const initialZoom = 8;
+        const initialCenter = [7.00, 100.50];
         let geojsonLayer;
         let markerLayer = L.layerGroup().addTo(map);
 
+        // UPDATED: เพิ่มพิกัดจังหวัดภาคใต้ให้ครบ เพื่อให้หมุดขึ้นถูกต้อง
         const provinceCoords = {
-            'ขอนแก่น': [16.43, 102.83], 'พระนครศรีอยุธยา': [14.35, 100.56], 'ปทุมธานี': [14.02, 100.52],
-            'กรุงเทพมหานคร': [13.75, 100.50], 'สมุทรปราการ': [13.60, 100.59], 'ชลบุรี': [13.36, 100.98],
-            'นครปฐม': [13.82, 100.06], 'สมุทรสงคราม': [13.41, 100.00], 'พิจิตร': [16.44, 100.34],
-            'เชียงใหม่': [18.79, 98.98], 'ภูเก็ต': [7.88, 98.39], 'สงขลา': [7.20, 100.59], 'อุบลราชธานี': [15.23, 104.86]
+            'กรุงเทพมหานคร': [13.75, 100.50],
+            'สงขลา': [7.17, 100.61],
+            'สตูล': [6.62, 100.06],
+            'ปัตตานี': [6.86, 101.25],
+            'ยะลา': [6.54, 101.28],
+            'นราธิวาส': [6.42, 101.82],
+            'พัทลุง': [7.61, 100.07],
+            'ตรัง': [7.55, 99.60],
+            'ภูเก็ต': [7.88, 98.39],
+            'นครศรีธรรมราช': [8.43, 99.96],
+            'กระบี่': [8.08, 98.90],
+            'พังงา': [8.45, 98.52],
+            'ระนอง': [9.95, 98.63],
+            'สุราษฎร์ธานี': [9.13, 99.33],
+            'ชุมพร': [10.49, 99.17]
         };
-        // UPDATED: Using a light theme tile layer
+
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
         }).addTo(map);
-        
-        // --- 3. CHART INITIALIZATION (Chart.js) ---
+
+        // --- 3. CHART SETUP ---
         const chartCtx = document.getElementById('provinceChart').getContext('2d');
         let provinceChart;
 
-        // --- 4. GEOJSON Data ---
+        // --- 4. FETCH DATA ---
         fetch('https://raw.githubusercontent.com/apisit/thailand.json/master/thailand.json')
             .then(response => response.json())
             .then(geojson => {
                 thailandGeoJsonData = geojson;
                 renderAll();
-            }).catch(error => console.error("Could not load Thailand GeoJSON data:", error));
+            })
+            .catch(error => console.error("Could not load Map Data:", error));
 
-
-        // --- 5. CORE RENDER FUNCTIONS ---
+        // --- 5. RENDER FUNCTIONS ---
         function renderAll() {
             if (!thailandGeoJsonData) return;
             updateKPIs();
@@ -504,222 +432,212 @@
 
         function updateKPIs() {
             document.getElementById('kpi-total-stores').textContent = filteredData.length;
-            document.getElementById('kpi-affected-provinces').textContent = new Set(filteredData.map(d => d.Province)).size;
-            document.getElementById('kpi-high-risk').textContent = filteredData.filter(d => d.Risk === 'สูง').length;
+            document.getElementById('kpi-affected-provinces').textContent = new Set(filteredData.map(d => d.Province).filter(Boolean)).size;
+            document.getElementById('kpi-high-risk').textContent = filteredData.filter(d => ['สูง', 'ปานกลาง'].includes(d.Risk)).length;
             document.getElementById('kpi-flooded').textContent = filteredData.filter(d => d.Status === 'Yes').length;
-            // UPDATED: Made SIM filtering case-insensitive and trim whitespace
-            document.getElementById('kpi-true').textContent = filteredData.filter(d => d.SIM && d.SIM.trim().toLowerCase() === 'true').length;
-            document.getElementById('kpi-dtac').textContent = filteredData.filter(d => d.SIM && d.SIM.trim().toLowerCase() === 'dtac').length;
-            document.getElementById('kpi-ais').textContent = filteredData.filter(d => d.SIM && d.SIM.trim().toLowerCase() === 'ais').length;
+
+            const countSim = (provider) => filteredData.filter(d => d.SIM && d.SIM.trim().toLowerCase() === provider.toLowerCase()).length;
+            document.getElementById('kpi-true').textContent = countSim('true');
+            document.getElementById('kpi-dtac').textContent = countSim('dtac');
+            document.getElementById('kpi-ais').textContent = countSim('ais');
         }
 
         function updateMap() {
             if (geojsonLayer) map.removeLayer(geojsonLayer);
+            markerLayer.clearLayers();
 
+            // คำนวณสีจังหวัด
             const provinceData = filteredData.reduce((acc, store) => {
-                const province = store.Province;
-                if (!acc[province]) acc[province] = { total: 0, flooded: 0, high: 0, medium: 0, low: 0 };
-                acc[province].total++;
-                if (store.Status === 'Yes') acc[province].flooded++;
-                if (store.Risk === 'สูง') acc[province].high++;
-                if (store.Risk === 'ปานกลาง') acc[province].medium++;
-                if (store.Risk === 'ต่ำ') acc[province].low++;
+                const p = store.Province;
+                if (!p) return acc;
+                if (!acc[p]) acc[p] = { total: 0, flooded: 0, high: 0 };
+                acc[p].total++;
+                if (store.Status === 'Yes') acc[p].flooded++;
+                if (store.Risk === 'สูง') acc[p].high++;
                 return acc;
             }, {});
 
             geojsonLayer = L.geoJSON(thailandGeoJsonData, {
                 style: feature => ({
                     fillColor: getProvinceColor(provinceData[feature.properties.name]),
-                    weight: 1, opacity: 1, color: '#ffffff', dashArray: '3', fillOpacity: 0.7
+                    weight: 1, opacity: 1, color: '#fff', dashArray: '3', fillOpacity: 0.7
                 }),
                 onEachFeature: (feature, layer) => {
-                    const provinceName = feature.properties.name;
-                    const stats = provinceData[provinceName];
-                    let tooltipContent = `<b>${provinceName}</b>`;
-                    tooltipContent += stats ? `<br>สาขาทั้งหมด: ${stats.total}<br>Yes: ${stats.flooded}<br>เสี่ยงสูง: ${stats.high}` : '<br>ไม่มีข้อมูลสาขา';
-                    layer.bindTooltip(tooltipContent);
+                    const pName = feature.properties.name;
+                    const stats = provinceData[pName];
+                    if (stats) {
+                        layer.bindTooltip(`<b>${pName}</b><br>สาขา: ${stats.total}<br>เสี่ยงสูง: ${stats.high}<br>ท่วม: ${stats.flooded}`);
+                    }
                 }
             }).addTo(map);
-            
-            markerLayer.clearLayers();
-            const iconSVG = (color) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${color}" width="32px" height="32px"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z"/><circle cx="12" cy="9.5" r="1.5" fill="white"/></svg>`;
+
+            // สร้าง Custom Icon
+            const createIcon = (color) => L.divIcon({
+                html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${color}" width="32px" height="32px"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z"/><circle cx="12" cy="9.5" r="1.5" fill="white"/></svg>`,
+                iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -34]
+            });
+
             const icons = {
-                'ต่ำ': L.divIcon({ html: iconSVG('#10b981'), iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -34] }),
-                'ปานกลาง': L.divIcon({ html: iconSVG('#f59e0b'), iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -34] }),
-                'สูง': L.divIcon({ html: iconSVG('#ef4444'), iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -34] })
+                'ต่ำ': createIcon('#10b981'),
+                'ปานกลาง': createIcon('#f59e0b'),
+                'สูง': createIcon('#ef4444')
             };
 
+            const bounds = L.latLngBounds(); // สำหรับ Auto Zoom
+
             filteredData.forEach(store => {
-                const baseCoords = provinceCoords[store.Province];
-                if (baseCoords) {
-                    const lat = baseCoords[0] + (Math.random() - 0.5) * 0.1;
-                    const lng = baseCoords[1] + (Math.random() - 0.5) * 0.1;
+                const coords = provinceCoords[store.Province];
+                if (coords) {
+                    // กระจายจุดเล็กน้อยไม่ให้ทับกันเป๊ะๆ
+                    const lat = coords[0] + (Math.random() - 0.5) * 0.08;
+                    const lng = coords[1] + (Math.random() - 0.5) * 0.08;
+                    
                     const marker = L.marker([lat, lng], { icon: icons[store.Risk] || icons['ต่ำ'] });
-                    marker.bindPopup(`<b>${store.Store_Name}</b><br>จังหวัด: ${store.Province}<br>SIM: ${store.SIM}<br>ความเสี่ยง: ${store.Risk}<br>สถานะ: ${store.Status}`);
+                    marker.bindPopup(`<b>${store.Store_Name}</b><br>${store.Province}<br>SIM: ${store.SIM}<br>Status: ${store.Status}`);
                     markerLayer.addLayer(marker);
+                    bounds.extend([lat, lng]);
                 }
             });
+
+            // Auto Zoom ไปหาจุด
+            if (filteredData.length > 0 && bounds.isValid()) {
+                map.fitBounds(bounds, { padding: [50, 50], maxZoom: 10 });
+            } else {
+                map.setView(initialCenter, initialZoom);
+            }
         }
-        
+
         function getProvinceColor(stats) {
-            if (!stats) return '#cbd5e1'; // slate-300
-            if (stats.flooded > 0) return '#ef4444'; // red-500
-            if (stats.high > 0) return '#f59e0b'; // amber-500
-            if (stats.medium > 0) return '#3b82f6'; // blue-500
-            return '#10b981'; // emerald-500
+            if (!stats) return '#e2e8f0'; // สีเทาอ่อน (ไม่มีข้อมูล)
+            if (stats.flooded > 0) return '#ef4444'; // แดง (มีท่วม)
+            if (stats.high > 0) return '#f59e0b'; // ส้ม (เสี่ยงสูง)
+            return '#3b82f6'; // น้ำเงิน (ปกติ)
         }
 
         function updateChart() {
-            const provinceStatusData = filteredData.reduce((acc, store) => {
-                const province = store.Province;
-                if (!acc[province]) acc[province] = { 'Yes': 0, 'No': 0 };
-                acc[province][store.Status]++;
+            const counts = filteredData.reduce((acc, store) => {
+                const p = store.Province;
+                if (!p) return acc;
+                if (!acc[p]) acc[p] = { yes: 0, no: 0 };
+                store.Status === 'Yes' ? acc[p].yes++ : acc[p].no++;
                 return acc;
             }, {});
 
-            const labels = Object.keys(provinceStatusData);
-            if (provinceChart) provinceChart.destroy();
+            const labels = Object.keys(counts);
+            const dataYes = labels.map(p => counts[p].yes);
+            const dataNo = labels.map(p => counts[p].no);
 
+            if (provinceChart) provinceChart.destroy();
             provinceChart = new Chart(chartCtx, {
                 type: 'bar',
                 data: {
                     labels: labels,
                     datasets: [
-                        { label: 'Yes', data: labels.map(p => provinceStatusData[p]['Yes']), backgroundColor: '#ef4444' },
-                        { label: 'No', data: labels.map(p => provinceStatusData[p]['No']), backgroundColor: '#3b82f6' }
+                        { label: 'น้ำท่วม (Yes)', data: dataYes, backgroundColor: '#ef4444' },
+                        { label: 'ปกติ (No)', data: dataNo, backgroundColor: '#3b82f6' }
                     ]
                 },
                 options: {
-                    responsive: true, maintainAspectRatio: false,
-                    scales: { 
-                        x: { stacked: true, ticks: { color: '#475569' }, grid: { color: 'rgba(100, 116, 139, 0.1)' } }, 
-                        y: { stacked: true, beginAtZero: true, ticks: { color: '#475569' }, grid: { color: 'rgba(100, 116, 139, 0.1)' } } 
-                    },
-                    plugins: { 
-                        legend: { labels: { color: '#334155' } }
-                    }
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { x: { stacked: true }, y: { stacked: true } }
                 }
             });
         }
 
         function updateTable() {
-            const tableBody = document.getElementById('dataTableBody');
-            tableBody.innerHTML = '';
-            const startIndex = (currentPage - 1) * itemsPerPage;
-            const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
-
-            paginatedData.forEach(row => {
-                const tr = document.createElement('tr');
-                tr.className = 'border-b border-slate-200 hover:bg-slate-50';
-                tr.innerHTML = `
-                    <td class="px-6 py-4">${row.ID_Shop}</td>
-                    <td class="px-6 py-4 font-medium text-on-surface">${row.Store_Name}</td>
-                    <td class="px-6 py-4">${row.SIM}</td>
-                    <td class="px-6 py-4">${row.Province}</td>
-                    <td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-xs font-semibold ${getRiskClass(row.Risk)}">${row.Risk}</span></td>
-                    <td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-xs font-semibold ${getStatusClass(row.Status)}">${row.Status}</span></td>
-                `;
-                tableBody.appendChild(tr);
-            });
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = '';
             
-            document.getElementById('pageInfo').textContent = `แสดง ${startIndex + 1} ถึง ${Math.min(startIndex + itemsPerPage, filteredData.length)} จาก ${filteredData.length}`;
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const pageData = filteredData.slice(start, end);
+
+            pageData.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = "border-b hover:bg-slate-50";
+                tr.innerHTML = `
+                    <td class="px-4 py-3">${row.ID_Shop}</td>
+                    <td class="px-4 py-3 font-medium">${row.Store_Name}</td>
+                    <td class="px-4 py-3">${row.SIM}</td>
+                    <td class="px-4 py-3">${row.Province}</td>
+                    <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs text-white ${row.Risk === 'สูง' ? 'bg-red-500' : row.Risk === 'ปานกลาง' ? 'bg-amber-500' : 'bg-teal-500'}">${row.Risk}</span></td>
+                    <td class="px-4 py-3 text-center"><span class="px-2 py-1 rounded text-xs ${row.Status === 'Yes' ? 'bg-red-100 text-red-800 font-bold' : 'bg-slate-100 text-slate-600'}">${row.Status}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('pageInfo').textContent = `แสดง ${start+1}-${Math.min(end, filteredData.length)} จาก ${filteredData.length}`;
             document.getElementById('prevPage').disabled = currentPage === 1;
-            document.getElementById('nextPage').disabled = (startIndex + itemsPerPage) >= filteredData.length;
+            document.getElementById('nextPage').disabled = end >= filteredData.length;
         }
 
-        // --- UTILITY FUNCTIONS ---
-        // UPDATED: Renamed function and changed delimiter to Tab for robustness
+        // --- UTILS ---
         function tsv_parser(text) {
-            const lines = text.split('\n').filter(Boolean);
+            const lines = text.split('\n').filter(l => l.trim() !== ''); // ตัดบรรทัดว่างทิ้ง
             const headers = lines[0].split('\t').map(h => h.trim());
             return lines.slice(1).map(line => {
-                const values = line.split('\t');
-                return headers.reduce((obj, header, i) => {
-                    obj[header] = values[i] ? values[i].trim() : '';
-                    return obj;
-                }, {});
-            }).filter(d => d.ID_Shop);
+                const vals = line.split('\t');
+                const obj = {};
+                headers.forEach((h, i) => obj[h] = vals[i] ? vals[i].trim() : '');
+                return obj;
+            }).filter(item => item.ID_Shop && item.Province); // กรองเอาเฉพาะข้อมูลที่มี ID และจังหวัด
         }
 
-        function getRiskClass(risk) {
-            switch(risk) {
-                case 'สูง': return 'bg-red-100 text-red-800';
-                case 'ปานกลาง': return 'bg-amber-100 text-amber-800';
-                case 'ต่ำ': return 'bg-teal-100 text-teal-800';
-                default: return 'bg-slate-100 text-slate-800';
-            }
-        }
-        function getStatusClass(status) {
-            return status === 'Yes' ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-800';
-        }
-
-        // --- 6. EVENT LISTENERS ---
-        document.getElementById('searchInput').addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            filteredData = data.filter(row => Object.values(row).some(value => value.toString().toLowerCase().includes(searchTerm)));
-            currentPage = 1;
-            renderAll();
-        });
-        document.getElementById('resetButton').addEventListener('click', () => {
+        // --- EVENTS ---
+        const resetFilter = () => {
             filteredData = [...data];
             document.getElementById('searchInput').value = '';
             currentPage = 1;
-            map.setView(initialCenter, initialZoom);
+            renderAll();
+        };
+
+        document.getElementById('resetButton').addEventListener('click', resetFilter);
+        
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            filteredData = data.filter(d => 
+                Object.values(d).some(val => val.toString().toLowerCase().includes(term))
+            );
+            currentPage = 1;
             renderAll();
         });
-        document.getElementById('card-flooded').addEventListener('click', () => {
-             filteredData = data.filter(d => d.Status === 'Yes');
-             currentPage = 1;
-             renderAll();
-        });
+
+        // Event Click on Cards
+        const filterBy = (key, val) => {
+            filteredData = data.filter(d => d[key] === val);
+            currentPage = 1;
+            renderAll();
+        }
+
+        document.getElementById('card-flooded').addEventListener('click', () => filterBy('Status', 'Yes'));
         document.getElementById('card-high-risk').addEventListener('click', () => {
              filteredData = data.filter(d => d.Risk === 'สูง');
              currentPage = 1;
              renderAll();
         });
-        ['card-total', 'card-provinces'].forEach(id => {
-            document.getElementById(id).addEventListener('click', () => document.getElementById('resetButton').click());
-        });
         
-        // UPDATED: Made SIM filtering case-insensitive and trim whitespace for card clicks
-        document.getElementById('card-true').addEventListener('click', () => {
-             filteredData = data.filter(d => d.SIM && d.SIM.trim().toLowerCase() === 'true');
-             currentPage = 1;
-             renderAll();
-        });
-        document.getElementById('card-dtac').addEventListener('click', () => {
-             filteredData = data.filter(d => d.SIM && d.SIM.trim().toLowerCase() === 'dtac');
-             currentPage = 1;
-             renderAll();
-        });
-        document.getElementById('card-ais').addEventListener('click', () => {
-             filteredData = data.filter(d => d.SIM && d.SIM.trim().toLowerCase() === 'ais');
-             currentPage = 1;
-             renderAll();
-        });
-
-        document.getElementById('prevPage').addEventListener('click', () => {
-            if (currentPage > 1) { currentPage--; updateTable(); }
-        });
-        document.getElementById('nextPage').addEventListener('click', () => {
-            if ((currentPage * itemsPerPage) < filteredData.length) { currentPage++; updateTable(); }
-        });
-
-        // --- 7. CLOCK FUNCTIONALITY ---
-        const clockElement = document.getElementById('clock');
-        function updateClock() {
-            const now = new Date();
-            const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            const formattedDate = new Intl.DateTimeFormat('th-TH-u-ca-buddhist', dateOptions).format(now);
-            const formattedTime = now.toLocaleTimeString('th-TH', { hour12: false });
-            
-            clockElement.innerHTML = `<div>${formattedDate}</div><div>${formattedTime}</div>`;
+        ['card-total', 'card-provinces'].forEach(id => document.getElementById(id).addEventListener('click', resetFilter));
+        
+        const filterSim = (sim) => {
+            filteredData = data.filter(d => d.SIM && d.SIM.toLowerCase() === sim);
+            currentPage = 1;
+            renderAll();
         }
+        document.getElementById('card-true').addEventListener('click', () => filterSim('true'));
+        document.getElementById('card-dtac').addEventListener('click', () => filterSim('dtac'));
+        document.getElementById('card-ais').addEventListener('click', () => filterSim('ais'));
 
-        updateClock();
-        setInterval(updateClock, 1000);
+        document.getElementById('prevPage').addEventListener('click', () => { if(currentPage > 1) { currentPage--; updateTable(); } });
+        document.getElementById('nextPage').addEventListener('click', () => { if(currentPage * itemsPerPage < filteredData.length) { currentPage++; updateTable(); } });
+
+        // Clock
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerHTML = now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH');
+        }, 1000);
+
     });
     </script>
 </body>
 </html>
-
