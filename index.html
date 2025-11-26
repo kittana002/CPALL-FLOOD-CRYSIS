@@ -130,7 +130,7 @@
                     <svg class="w-6 h-6 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
                  </div>
                  <div>
-                    <h3 class="text-on-surface-muted text-sm font-medium uppercase">สาขาที่ท่วม</h3>
+                    <h3 class="text-on-surface-muted text-sm font-medium uppercase">สาขาที่Yes</h3>
                      <!-- UPDATED: font-bold to font-semibold -->
                     <p id="kpi-flooded" class="text-3xl font-semibold text-on-surface">0</p>
                 </div>
@@ -507,7 +507,7 @@ ID_Shop	Store_Name	SIM	Province	Address	Risk	Status	Risk	Status
             document.getElementById('kpi-total-stores').textContent = filteredData.length;
             document.getElementById('kpi-affected-provinces').textContent = new Set(filteredData.map(d => d.Province)).size;
             document.getElementById('kpi-high-risk').textContent = filteredData.filter(d => d.Risk === 'สูง').length;
-            document.getElementById('kpi-flooded').textContent = filteredData.filter(d => d.Status === 'ท่วม').length;
+            document.getElementById('kpi-flooded').textContent = filteredData.filter(d => d.Status === 'Yes').length;
             // UPDATED: Made SIM filtering case-insensitive and trim whitespace
             document.getElementById('kpi-true').textContent = filteredData.filter(d => d.SIM && d.SIM.trim().toLowerCase() === 'true').length;
             document.getElementById('kpi-dtac').textContent = filteredData.filter(d => d.SIM && d.SIM.trim().toLowerCase() === 'dtac').length;
@@ -521,7 +521,7 @@ ID_Shop	Store_Name	SIM	Province	Address	Risk	Status	Risk	Status
                 const province = store.Province;
                 if (!acc[province]) acc[province] = { total: 0, flooded: 0, high: 0, medium: 0, low: 0 };
                 acc[province].total++;
-                if (store.Status === 'ท่วม') acc[province].flooded++;
+                if (store.Status === 'Yes') acc[province].flooded++;
                 if (store.Risk === 'สูง') acc[province].high++;
                 if (store.Risk === 'ปานกลาง') acc[province].medium++;
                 if (store.Risk === 'ต่ำ') acc[province].low++;
@@ -537,7 +537,7 @@ ID_Shop	Store_Name	SIM	Province	Address	Risk	Status	Risk	Status
                     const provinceName = feature.properties.name;
                     const stats = provinceData[provinceName];
                     let tooltipContent = `<b>${provinceName}</b>`;
-                    tooltipContent += stats ? `<br>สาขาทั้งหมด: ${stats.total}<br>ท่วม: ${stats.flooded}<br>เสี่ยงสูง: ${stats.high}` : '<br>ไม่มีข้อมูลสาขา';
+                    tooltipContent += stats ? `<br>สาขาทั้งหมด: ${stats.total}<br>Yes: ${stats.flooded}<br>เสี่ยงสูง: ${stats.high}` : '<br>ไม่มีข้อมูลสาขา';
                     layer.bindTooltip(tooltipContent);
                 }
             }).addTo(map);
@@ -573,7 +573,7 @@ ID_Shop	Store_Name	SIM	Province	Address	Risk	Status	Risk	Status
         function updateChart() {
             const provinceStatusData = filteredData.reduce((acc, store) => {
                 const province = store.Province;
-                if (!acc[province]) acc[province] = { 'ท่วม': 0, 'ยังไม่ท่วม': 0 };
+                if (!acc[province]) acc[province] = { 'Yes': 0, 'No': 0 };
                 acc[province][store.Status]++;
                 return acc;
             }, {});
@@ -586,8 +586,8 @@ ID_Shop	Store_Name	SIM	Province	Address	Risk	Status	Risk	Status
                 data: {
                     labels: labels,
                     datasets: [
-                        { label: 'ท่วม', data: labels.map(p => provinceStatusData[p]['ท่วม']), backgroundColor: '#ef4444' },
-                        { label: 'ยังไม่ท่วม', data: labels.map(p => provinceStatusData[p]['ยังไม่ท่วม']), backgroundColor: '#3b82f6' }
+                        { label: 'Yes', data: labels.map(p => provinceStatusData[p]['Yes']), backgroundColor: '#ef4444' },
+                        { label: 'No', data: labels.map(p => provinceStatusData[p]['No']), backgroundColor: '#3b82f6' }
                     ]
                 },
                 options: {
@@ -651,7 +651,7 @@ ID_Shop	Store_Name	SIM	Province	Address	Risk	Status	Risk	Status
             }
         }
         function getStatusClass(status) {
-            return status === 'ท่วม' ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-800';
+            return status === 'Yes' ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-800';
         }
 
         // --- 6. EVENT LISTENERS ---
@@ -669,7 +669,7 @@ ID_Shop	Store_Name	SIM	Province	Address	Risk	Status	Risk	Status
             renderAll();
         });
         document.getElementById('card-flooded').addEventListener('click', () => {
-             filteredData = data.filter(d => d.Status === 'ท่วม');
+             filteredData = data.filter(d => d.Status === 'Yes');
              currentPage = 1;
              renderAll();
         });
