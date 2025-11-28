@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flood Impact CP-ALL Monitoring Dashboard</title>
+    <title>Flood Impact Monitor - Realtime Map</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -18,11 +18,8 @@
                 extend: {
                     colors: {
                         'primary': '#0d9488',
-                        'primary-dark': '#0f766e',
                         'background': '#f1f5f9',
                         'surface': '#ffffff',
-                        'on-surface': '#1e293b',
-                        'on-surface-muted': '#64748b',
                     }
                 }
             }
@@ -34,613 +31,643 @@
         body { font-family: 'Sarabun', sans-serif; }
         #map { height: 600px; width: 100%; border-radius: 0.5rem; z-index: 1; }
         .leaflet-tooltip { font-family: 'Sarabun', sans-serif; font-weight: 600; }
-        /* Fix for map markers overlap */
-        .leaflet-div-icon { background: transparent !important; border: none !important; }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
-<body class="bg-background text-on-surface">
+<body class="bg-background text-slate-800">
 
     <div class="container mx-auto p-4 md:p-6">
         
-        <header class="mb-8 flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-lg shadow-sm">
+        <header class="mb-6 flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-lg shadow-sm">
             <div class="flex items-center mb-4 md:mb-0">
                 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/7-eleven_logo.svg/244px-7-eleven_logo.svg.png" alt="7-Eleven Logo" class="h-10 mr-4">
                 <div>
-                    <h1 class="text-2xl md:text-3xl font-bold text-on-surface">Flood Impact Monitor</h1>
-                    <p class="text-sm text-on-surface-muted">Dashboard ติดตามสถานะร้านสาขาภาคใต้</p>
+                    <h1 class="text-2xl font-bold text-slate-800">Flood Impact Monitor</h1>
+                    <p class="text-sm text-slate-500">ติดตามสถานะร้านและน้ำท่วม (Import from Excel)</p>
                 </div>
             </div>
             
-            <div class="flex flex-col items-end">
-                <div id="clock" class="text-right text-lg font-bold text-primary mb-2"></div>
-                <div class="flex items-center space-x-2 w-full md:w-auto">
-                    <input type="text" id="searchInput" placeholder="ค้นหา สาขา/จังหวัด..." class="w-full md:w-64 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm">
-                    <button id="resetButton" class="px-4 py-2 bg-slate-600 text-white font-semibold rounded-lg hover:bg-slate-700 transition duration-300 text-sm whitespace-nowrap">รีเซ็ตทั้งหมด</button>
+            <div class="flex flex-col items-end gap-2">
+                <div id="clock" class="text-right text-lg font-bold text-primary"></div>
+                <div class="flex gap-2">
+                    <input type="text" id="searchInput" placeholder="ค้นหา รหัส, ชื่อร้าน, จังหวัด..." class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary outline-none text-sm w-64">
+                    <button id="resetButton" class="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 text-sm">รีเซ็ต</button>
                 </div>
             </div>
         </header>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div id="card-total" class="bg-surface p-4 rounded-lg shadow-sm border-b-4 border-primary cursor-pointer hover:shadow-md transition">
-                <p class="text-xs font-bold text-on-surface-muted uppercase tracking-wider">สาขาทั้งหมด</p>
-                <p id="kpi-total-stores" class="text-3xl font-bold text-on-surface mt-1">0</p>
+            <div id="filter-total" class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-slate-500 cursor-pointer hover:shadow-md transition">
+                <p class="text-xs font-bold text-slate-400 uppercase">สาขาทั้งหมด</p>
+                <p id="kpi-total" class="text-3xl font-bold text-slate-700">0</p>
             </div>
-            <div id="card-provinces" class="bg-surface p-4 rounded-lg shadow-sm border-b-4 border-sky-500 cursor-pointer hover:shadow-md transition">
-                <p class="text-xs font-bold text-on-surface-muted uppercase tracking-wider">จังหวัดที่กระทบ</p>
-                <p id="kpi-affected-provinces" class="text-3xl font-bold text-on-surface mt-1">0</p>
+            <div id="filter-flood" class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-red-600 cursor-pointer hover:shadow-md transition">
+                <p class="text-xs font-bold text-slate-400 uppercase">น้ำท่วม (Flooded)</p>
+                <p id="kpi-flood" class="text-3xl font-bold text-red-600">0</p>
             </div>
-            <div id="card-high-risk" class="bg-surface p-4 rounded-lg shadow-sm border-b-4 border-amber-500 cursor-pointer hover:shadow-md transition">
-                <p class="text-xs font-bold text-on-surface-muted uppercase tracking-wider">เสี่ยงสูง / ปานกลาง</p>
-                <p id="kpi-high-risk" class="text-3xl font-bold text-amber-600 mt-1">0</p>
+            <div id="filter-down" class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-orange-500 cursor-pointer hover:shadow-md transition">
+                <p class="text-xs font-bold text-slate-400 uppercase">อุปกรณ์ Down</p>
+                <p id="kpi-down" class="text-3xl font-bold text-orange-500">0</p>
             </div>
-            <div id="card-flooded" class="bg-surface p-4 rounded-lg shadow-sm border-b-4 border-red-500 cursor-pointer hover:shadow-md transition">
-                <p class="text-xs font-bold text-on-surface-muted uppercase tracking-wider">น้ำท่วมแล้ว (Yes)</p>
-                <p id="kpi-flooded" class="text-3xl font-bold text-red-600 mt-1">0</p>
+            <div id="filter-online" class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-green-500 cursor-pointer hover:shadow-md transition">
+                <p class="text-xs font-bold text-slate-400 uppercase">Online ปกติ</p>
+                <p id="kpi-online" class="text-3xl font-bold text-green-600">0</p>
             </div>
         </div>
-        
-        <div class="grid grid-cols-3 gap-4 mb-8">
-            <div id="card-true" class="bg-surface p-3 rounded-lg shadow-sm border border-slate-200 cursor-pointer hover:border-red-500 hover:bg-red-50 transition text-center">
-                <span class="text-xs font-bold text-on-surface-muted">TRUE</span>
-                <p id="kpi-true" class="text-xl font-bold text-red-600">0</p>
+
+        <div class="grid grid-cols-3 gap-4 mb-6">
+            <div onclick="filterBySim('TRUE')" class="bg-white p-2 rounded-lg shadow-sm border border-slate-200 text-center cursor-pointer hover:bg-red-50">
+                <span class="text-xs font-bold text-slate-400">TRUE</span>
+                <p id="kpi-sim-true" class="text-lg font-bold text-red-600">0</p>
             </div>
-            <div id="card-dtac" class="bg-surface p-3 rounded-lg shadow-sm border border-slate-200 cursor-pointer hover:border-sky-500 hover:bg-sky-50 transition text-center">
-                <span class="text-xs font-bold text-on-surface-muted">DTAC</span>
-                <p id="kpi-dtac" class="text-xl font-bold text-sky-500">0</p>
+            <div onclick="filterBySim('AIS')" class="bg-white p-2 rounded-lg shadow-sm border border-slate-200 text-center cursor-pointer hover:bg-green-50">
+                <span class="text-xs font-bold text-slate-400">AIS</span>
+                <p id="kpi-sim-ais" class="text-lg font-bold text-green-600">0</p>
             </div>
-            <div id="card-ais" class="bg-surface p-3 rounded-lg shadow-sm border border-slate-200 cursor-pointer hover:border-green-500 hover:bg-green-50 transition text-center">
-                <span class="text-xs font-bold text-on-surface-muted">AIS</span>
-                <p id="kpi-ais" class="text-xl font-bold text-green-600">0</p>
+            <div onclick="filterBySim('DTAC')" class="bg-white p-2 rounded-lg shadow-sm border border-slate-200 text-center cursor-pointer hover:bg-sky-50">
+                <span class="text-xs font-bold text-slate-400">DTAC</span>
+                <p id="kpi-sim-dtac" class="text-lg font-bold text-sky-500">0</p>
             </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            <div class="lg:col-span-2 bg-surface p-1 rounded-lg shadow-md border border-slate-200">
+            <div class="lg:col-span-2 bg-white p-1 rounded-lg shadow-md border border-slate-200 relative">
                 <div id="map"></div>
+                <div class="absolute bottom-4 left-4 bg-white/90 p-2 rounded shadow text-xs z-[400]">
+                    <div class="flex items-center gap-2 mb-1"><span class="w-3 h-3 rounded-full bg-red-600"></span> น้ำท่วม / Down</div>
+                    <div class="flex items-center gap-2 mb-1"><span class="w-3 h-3 rounded-full bg-orange-500"></span> Checking</div>
+                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-green-500"></span> Online</div>
+                </div>
             </div>
             
-            <div class="bg-surface p-4 rounded-lg shadow-md border border-slate-200 flex flex-col">
-                <h2 class="text-lg font-bold mb-4 text-on-surface">สถานะตามจังหวัด</h2>
+            <div class="bg-white p-4 rounded-lg shadow-md border border-slate-200 flex flex-col">
+                <h2 class="text-lg font-bold mb-4">สรุปแยกตามจังหวัด</h2>
                 <div class="relative flex-grow min-h-[300px]">
                     <canvas id="provinceChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <div class="bg-surface p-4 rounded-lg shadow-md border border-slate-200">
-            <h2 class="text-lg font-bold mb-4 text-on-surface">รายชื่อสาขา</h2>
+        <div class="bg-white p-4 rounded-lg shadow-md border border-slate-200">
+            <h2 class="text-lg font-bold mb-4">รายชื่อสาขา</h2>
             <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left text-on-surface-muted">
-                    <thead class="text-xs text-on-surface uppercase bg-slate-100">
+                <table class="w-full text-sm text-left text-slate-500">
+                    <thead class="text-xs text-slate-700 uppercase bg-slate-100 sticky top-0">
                         <tr>
-                            <th scope="col" class="px-4 py-3">ID</th>
-                            <th scope="col" class="px-4 py-3">ชื่อร้าน</th>
-                            <th scope="col" class="px-4 py-3">SIM</th>
-                            <th scope="col" class="px-4 py-3">จังหวัด</th>
-                            <th scope="col" class="px-4 py-3">ความเสี่ยง</th>
-                            <th scope="col" class="px-4 py-3 text-center">สถานะ</th>
+                            <th class="px-4 py-3">ID</th>
+                            <th class="px-4 py-3">ชื่อร้าน</th>
+                            <th class="px-4 py-3">จังหวัด</th>
+                            <th class="px-4 py-3">SIM</th>
+                            <th class="px-4 py-3 text-center">น้ำท่วม?</th>
+                            <th class="px-4 py-3 text-center">สถานะ</th>
+                            <th class="px-4 py-3">พิกัด</th>
                         </tr>
                     </thead>
-                    <tbody id="dataTableBody"></tbody>
+                    <tbody id="tableBody"></tbody>
                 </table>
             </div>
             <div class="flex justify-between items-center mt-4 pt-4 border-t border-slate-100">
-                <span id="pageInfo" class="text-xs text-on-surface-muted"></span>
+                <span id="pageInfo" class="text-xs text-slate-500"></span>
                 <div class="inline-flex rounded-md shadow-sm">
-                    <button id="prevPage" class="px-3 py-1 text-sm font-medium bg-white border border-slate-300 rounded-l-lg hover:bg-slate-50">ก่อนหน้า</button>
-                    <button id="nextPage" class="px-3 py-1 text-sm font-medium bg-white border-t border-b border-r border-slate-300 rounded-r-lg hover:bg-slate-50">ถัดไป</button>
+                    <button id="btnPrev" class="px-3 py-1 text-sm border rounded-l hover:bg-slate-50">ก่อนหน้า</button>
+                    <button id="btnNext" class="px-3 py-1 text-sm border-t border-b border-r rounded-r hover:bg-slate-50">ถัดไป</button>
                 </div>
             </div>
         </div>
+
     </div>
 
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    // --- 1. DATA PREPARATION (วางข้อมูล Excel ที่นี่) ---
+    // Header ที่รองรับ: ID_Shop, Store_Name, SIM, Province, Status..., น้ำท่วม..., Latitude, Longitude
+    const tsvData = `ID_Shop	Circuit_MPLS	Circuit_CID_WDS	Store_Name	WDS_SIM_No	SIM	Model	Media	Province	Address	Status 24/11/25 10:00	ติดต่อร้านได้? (Yes/No)	น้ำท่วมอุปกรณ์? (Yes/No)	Latitude	Longitude
+6457	U88015	WDS14545	ร้านเซเว่น สาขา เตชาโต	640011057	TRUE	One540	GPON	สงขลา	เลขที่ 351 351/1 ถ.ธรรมนูญวิถี หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	7.007542	100.477221
+14305	U94224	WDS25322	ร้านเซเว่น สาขา ถนนคลองเรียน2	638735648	TRUE	Cisco819	GPON	สงขลา	เลขที่ 37/2 ถนนคลองเรียน2 หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	6.999692	100.484258
+8705	U91806	WDS14561	ร้านเซเว่น สาขา นาทวี2	640011075	TRUE	One540	GPON	สงขลา	59/6 หมู่ 1 ถนนเพชรเกษม นาทวี นาทวี สงขลา 90160	Down	Yes	Yes	6.743202	100.690574
+9394	U60785	WDS17322	ร้านเซเว่น สาขา บ้านสะท้อน	0659469057(A)	AIS	One540	FIBER	สงขลา	เลขที่ 1/7 1/8 หมู่1 สะท้อน นาทวี สงขลา 90160	Down	Yes	No	6.629154	100.696322
+16187	U68711	WDS34951	ร้านเซเว่น สาขา ตลาดมากินตะ	0659466440(A)	AIS	One540	GPON	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 16187 สาขาตลาดมากินตะ - - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Checking..		7.0047802	100.486832
+16647	U69409	WDS37125	ร้านเซเว่น สาขา ตำบลเกาะสะบ้า	0659364385(A)	AIS	Cisco819	FIBER	สงขลา	เลขที่ - รหัสสาขา 16647 7-11 ตำบลเกาะสะบ้า - เกาะสะบ้า เทพา สงขลา 90150	Down	Checking..		6.861779	100.879815
+15328	U97032	WDS28900	ร้านเซเว่น สาขา ถนนทุ่งรี	639347396	TRUE	Cisco819	GPON	สงขลา	เลขที่ - คอหงส์ หาดใหญ่ สงขลา 90110	Online	Yes	No	7.0004851	100.496718
+8510	U88027	WDS14555	ร้านเซเว่น สาขา ควนเนียง	0659512872(A)	AIS	One540	FIBER	สงขลา	เลขที่ 103/11 รัตภูมิ ควนเนียง สงขลา 90220	Online	Checking..		7.192152	100.353021
+14871	U94898	WDS27702	ร้านเซเว่น สาขา เพชรเกษม(เทศบาลหาดใหญ่)	953619782	TRUE	One540	GPON	สงขลา	เลขที่ - 430/2-4 ถนนเพชรเกษม หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	7.014782	100.472488
+4588	U13182	WDS14539	ร้านเซเว่น สาขา เพชรเกษมซอย19	640011049	TRUE	Cisco819	GPON	สงขลา	เลขที่ 488/4 ถ.เพชรเกษม หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	7.016277	100.476753
+6335	U17981	WDS24955	ร้านเซเว่น สาขา หน้า ร.พ.ค่ายเสนาณรงค์	957064974	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 730 CP ALL (รหัสร้าน_6335) หน้าร.พ.ค่ายเสนาณรงค์ - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Checking..		7.022952	100.499261
+18651	U72418	WDS44030	ร้านเซเว่น สาขา ถนนภาสว่าง	640212639	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ - โฉนด รหัสสาขา 18651 ถนนภาสว่าง - คอหงส์ หาดใหญ่ สงขลา 90110	Online via WDS	Checking..		7.019426	100.490968
+22929	WDS2SIM	WDS50094	ร้านเซเว่น สาขา หัวรั้ว	0996849273(T)0610215177(A)	AIS	AR611-LTE	WDS2SIM	สงขลา	เลขที่ - 7-11 รหัสสาขา 22929 หัวรั้ว - คอหงส์ หาดใหญ่ สงขลา 90110	Down			7.019301	100.488213
+13671	U21449	WDS26917	ร้านเซเว่น สาขา พิชัยสงคราม (สะเดา)	0659362876(A)	AIS	Cisco819	GPON	สงขลา	เลขที่ - 39/4 พิชัยสงคราม สะเดา สะเดา สงขลา 90120	Down	Yes	No	6.636299	100.430617
+17955	U53059	WDS41127	ร้านเซเว่น สาขา ตำบลคลองแห	966827178	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ - 7-11 รหัสสาขา 17955 ตำบลคลองแห - คลองแห หาดใหญ่ สงขลา 90110	Online	Checking..		7.049517	100.474048
+13449	U21414	WDS26887	ร้านเซเว่น สาขา ลพบุรีราเมศวร์(ขาออก)	917569853	TRUE	One540	GPON	สงขลา	เลขที่ - 108/7 หมู่ที่ 3 ลพบุรีราเมศวร์ ขาออก คลองแห หาดใหญ่ สงขลา 90110	Down	Checking..		7.0354617	100.467159
+622	U17782	WDS24754	ร้านเซเว่น สาขา ศุภสารรังสรรค์	955232420	TRUE	One540	GPON	สงขลา	เลขที่ - 176 CP ALL (รหัสร้าน_622) ศุภสารรังสรรค์ - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	Yes	7.008615	100.473886
+6522	U92134	WDS14546	ร้านเซเว่น สาขา ปตท.คอหงส์	640011058	TRUE	One540	GPON	สงขลา	เลขที่ 2/9 หมู่ 5 ถ.กาญจนวานิช คอหงส์ หาดใหญ่ สงขลา 90110	Down	Yes	Yes	6.978701	100.480071
+16406	U98486	WDS36018	ร้านเซเว่น สาขา จันทร์วิโรจน์	953681598	TRUE	One540	GPON	สงขลา	เลขที่ - โฉนด รหัสสาขา 16406 สาขาจันทร์วิโรจน์ - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	Yes	6.990343	100.470713
+13110	U17244	WDS25227	ร้านเซเว่น สาขา ถนนนิพัทธ์ภักดี	957065916	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 7-11 CP ALL (รหัสร้าน_13110) ถนนนิพัทธ์ภักดี - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	Yes	6.997223	100.471915
+16894	U99825	WDS37666	ร้านเซเว่น สาขา ร้าน เบลลินี่ เบคแอนด์บรู ถนน ปุณณกัณฑ์	966876731	TRUE	One540	GPON	สงขลา	เลขที่ - 99/40 รหัสสาขา 16894 7-11 เบลลินี่ เบคแอนด์บรู ปุณณกัณฑ์ คอหงส์ หาดใหญ่ สงขลา 90110	Down	Yes	No	7.001748	100.497155
+594	U17784	WDS24753	ร้านเซเว่น สาขา ทุ่งเสา	954705916	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 88,90 CP ALL (รหัสร้าน_594) ทุ่งเสา คอหงส์ หาดใหญ่ สงขลา 90110	Down	Yes	Yes	6.994108	100.475848
+8255	U17786	WDS24758	ร้านเซเว่น สาขา ทุ่งเสา 2	954096872	TRUE	Cisco819	FIBER	สงขลา	เลขที่ - 51,53,55 CP ALL (รหัสร้าน_8255) ทุ่งเสา2 - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	Yes	6.99471	100.475375
+871	U17783	WDS24755	ร้านเซเว่น สาขา เสน่หานุสรณ์	957065310	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 26/2-7 CP ALL (รหัสร้าน_871) เสน่หานุสรณ์ - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	Yes	7.005057	100.471421
+587	U17987	WDS24961	ร้านเซเว่น สาขา ตลาดกิมหยง	954096290	TRUE	Cisco819	FIBER	สงขลา	เลขที่ - 36/1-2 CP ALL (รหัสร้าน_587) ตลาดกิมหยง - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	Yes	7.007592	100.469974
+18505	U72717	WDS44062	ร้านเซเว่น สาขา สวนหย่อมศุภสารรังสรรค์	640285643	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ - 7-11 รหัสสาขา 18505 สวนหย่อมศุภสารรังสรรค์ - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	Yes	7.00875	100.477778
+8983	U17986	WDS24957	ร้านเซเว่น สาขา ศุภสารรังสรรค์ 2	953948172	TRUE	One540	GPON	สงขลา	เลขที่ - 163 CP ALL (รหัสร้าน_8983) ศุภสารรังสรรค์2 หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	Yes	7.008756	100.473379
+961	U21408	WDS26881	ร้านเซเว่น สาขา ราษฎร์อุทิศ	648947271	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 104 CP ALL (รหัสร้าน_961) ราษฎร์อุทิศ ราษฎร์อุทิศ หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	Yes	7.0253433	100.456340
+6737	U21398	WDS26871	ร้านเซเว่น สาขา นิพัทธ์อุทิศ 3	953684038	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 118-120 CP ALL (รหัสร้าน_6737) นิพัทธ์อุทิศ นิพัทธ์อุทิศ3 หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	Yes	7.0037222	100.470863
+591	U91402	WDS14517	ร้านเซเว่น สาขา หน้าร.พ.หาดใหญ่	640011020	TRUE	Cisco819	GPON	สงขลา	เลขที่ 188/19-20 ถ.รัถการ หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	Yes	7.01686	100.466725
+589	U91400	WDS14511	ร้านเซเว่น สาขา ซีกิมหยง	640011014	TRUE	Cisco819	GPON	สงขลา	เลขที่ 7 8 ถ.ฉัยยากุลอุทิศ หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	7.002334	100.474182
+13391	U21407	WDS26880	ร้านเซเว่น สาขา ถนนเสน่หานุสรณ์	969597365	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 59/4 CP ALL (รหัสร้าน_13391) ถนนเสน่หานุสรณ์ เสน่หานุสรณ์ หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No		
+17192	U51502	WDS38450	ร้านเซเว่น สาขา PTTOR ราษฎร์อุทิศ (หาดใหญ่)	966909502	TRUE	Cisco1111-4PLTE	GPON	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 17192 PTTOR ราษฎร์อุทิศ (หาดใหญ่) - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	7.00353	100.462286
+13089	U16313	WDS23620	ร้านเซเว่น สาขา ปตท.ถนนหาดใหญ่-รัตภูมิ	968028907	TRUE	One540	GPON	สงขลา	เลขที่ - 1199 หมู่ 4 CP ALL (รหัสร้าน_13089) ปตท.ถนนหาดใหญ่-รัตภูมิ (RS) เพชรเกษม ควนลัง หาดใหญ่ สงขลา 90110	Online	Yes	No	10.510093	99.121764
+15932	U97623	WDS31077	ร้านเซเว่น สาขา ตำบลควนลัง	958741691	TRUE	One540	GPON	สงขลา	เลขที่ - รหัสสาขา 15932 7-11 ควนลัง เพชรเกษม ควนลัง หาดใหญ่ สงขลา 90110	Down	Yes	No	6.991489	100.415623
+16129	U98202	WDS34813	ร้านเซเว่น สาขา ถนนสามชัย ซ.1	952075713	TRUE	One540	GPON	สงขลา	เลขที่ - SHOP ID:16129 สาขา ถนนสามชัย ซ.1 - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	7.0160925	100.48009
+13393	U21413	WDS26886	ร้านเซเว่น สาขา ถนนราษฎร์ยินดี ซอย 9	648947204	TRUE	One540	GPON	สงขลา	เลขที่ - ถนนราษฎร์ยินดี ซอย9 ราษฎร์ยินดี ราษฎร์ยินดี 9 หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	7.001807	100.480995
+14486	U94381	WDS25795	ร้านเซเว่น สาขา จุติอนุสรณ์(14486)	658762213	TRUE	Cisco819	GPON	สงขลา	เลขที่ 108 ถนนจุติอนุสรณ์ หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	7.013039	100.476226
+10831	U21395	WDS26868	ร้านเซเว่น สาขา ประกายทอง	952721671	TRUE	Cisco819	GPON	สงขลา	เลขที่ - ร้าน 7-11 ประกายทอง ควนลัง หาดใหญ่ สงขลา 90110	Down	Yes	Yes	6.999702	100.425347
+16630	U98959	WDS37091	ร้านเซเว่น สาขา บางแฟบพัฒนา	966389281	TRUE	Cisco819	GPON	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 16630 สาขาบางแฟบพัฒนา - ควนลัง หาดใหญ่ สงขลา 90110	Down	Yes	No	7.014225	100.449208
+8369	U92856	WDS17317	ร้านเซเว่น สาขา พรุฉิมพลี	641807873	TRUE	Cisco819	GPON	สงขลา	17/1 หมู่ที่ 1 ถ.บ้านหน้าควนลัง - บ้านพรุ ควนลัง หาดใหญ่ สงขลา 90110	Down	Yes	Yes	6.982062	100.452586
+16580	U98826	WDS36880	ร้านเซเว่น สาขา ถนนบ้านบางนา(บางแฟบ)	973064105	TRUE	Cisco819	GPON	สงขลา	เลขที่ - โฉนด รหัสสาขา 16580 สาขาบ้านบางนา(บางแฟบ) - ควนลัง หาดใหญ่ สงขลา 90110	Down	Yes	No	7.007643	100.45071
+16856	U99652	WDS37558	ร้านเซเว่น สาขา เทศาพัฒนา	966872057	TRUE	Cisco819	GPON	สงขลา	เลขที่ - รหัสสาขา 16856 7-11 เทศาพัฒนา - ควนลัง หาดใหญ่ สงขลา 90110	Down	Yes	No	6.998904	100.45351
+10176	U17993	WDS24966	ร้านเซเว่น สาขา ทุ่งเสา 2 ซอย 10	953947879	TRUE	One540	GPON	สงขลา	เลขที่ - 53,55,57,59 CP ALL (รหัสร้าน_10176) ทุ่งเสา2ซอย10 - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	6.996092	100.480526
+6303	U17988	WDS24962	ร้านเซเว่น สาขา ถนนสามชัย	955807973	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 248 CP ALL (รหัสร้าน_6303) ถนนสามชัย - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	7.0114676	100.479294
+943	U91469	WDS14512	ร้านเซเว่น สาขา ตลาดใหม่	640011015	TRUE	Cisco819	GPON	สงขลา	เลขที่ 43-45 ถ.ต้นรัตนากร หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	6.9999058	100.474264
+17047	U51345	WDS38053	ร้านเซเว่น สาขา รัตนอุทิศ ซ.18	0612655206(A)	AIS	One540	GPON	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 17047 รัตนอุทิศ ซ.18 - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	7.01888	100.464711
+11112	U21396	WDS26869	ร้านเซเว่น สาขา ถนนปุณกัณฑ์ซอย12	953082674	TRUE	Cisco819	FIBER	สงขลา	เลขที่ - ถนนปุณกัณฑ์ซอย12 ปุณกันณฑ์ซ.12 คอหงส์ หาดใหญ่ สงขลา 90110	Online	Yes	No/Online		
+748	U91426	WDS14513	ร้านเซเว่น สาขา โชคสมานกุล	640011016	TRUE	Cisco819	GPON	สงขลา	เลขที่ 62 ถ.โชคสมาน 1 หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	7.009776	100.464749
+985	U17974	WDS24949	ร้านเซเว่น สาขา หรรษา	958356454	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 319 CP ALL (รหัสร้าน_985) หรรษา - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	7.00785	100.45961
+7811	U60782	WDS17316	ร้านเซเว่น สาขา คลองหอยโข่ง	955394896	TRUE	One540	FIBER	สงขลา	เลขที่ 196 197 หมู่ 7 ทุ่งลาน คลองหอยโข่ง สงขลา 90230	Down	Yes	No	6.93093	100.416218
+8321	U91727	WDS14554	ร้านเซเว่น สาขา รัตนอุทิศซอย11	640011068	TRUE	One540	GPON	สงขลา	เลขที่ 105 107 ถ.รัตนอุทิศ หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	7.01577	100.462071
+16478	U98739	WDS36765	ร้านเซเว่น สาขา สนามกีฬาจิระนคร	996168465	TRUE	One540	GPON	สงขลา	เลขที่ - โฉนด รหัสสาขา 16478 สนามกีฬาจิระนคร - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	7.019397	100.470713
+13537	U17252	WDS25235	ร้านเซเว่น สาขา สี่แยกสนามบินนอก	957065824	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 1560 CP ALL (รหัสร้าน_13537) สี่แยกสนามบินนอก - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	6.9965145	100.431152
+5963	U91683	WDS14579	ร้านเซเว่น สาขา นิพัทธ์สงเคราะห์2	910289735	TRUE	One540	GPON	สงขลา	เลขที่ 264/1-2 ถ.นิพัทธ์สงเคราะห์ 2 หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	7.023003	100.472328
+10234	U17977	WDS24952	ร้านเซเว่น สาขา เพชรเกษม ซอย 41	958353074	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 1347/1 CP ALL (รหัสร้าน_10234) เพชรเกษมซอย41 - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	6.99829	100.44398
+10689	U17983	WDS24958	ร้านเซเว่น สาขา ถนนรัถการ	957064874	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 430/1 CP ALL (รหัสร้าน_10689) ถนนรัถการ - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	7.0057244	100.46834
+9877	U89906	WDS16549	ร้านเซเว่น สาขา ปตท.บ้านในเมือง(จะนะ)	641825307	TRUE	One540	FIBER	สงขลา	เลขที่ 23/1 หมู่ 5 คลองเปียะ จะนะ สงขลา 90130	Down	Yes	No	6.95172	100.69311
+12163	U21410	WDS26883	ร้านเซเว่น สาขา ตลาดยรรยงค์	953099126	TRUE	Cisco819	FIBER	สงขลา	เลขที่ - 70 หมู่ที่ 3 สาขาตลาดยรรยงค์ ระโนด-สงขลา ระวะ ระโนด สงขลา 90140	Down	Yes	Yes	17.018488	99.71087
+10451	U17976	WDS24950	ร้านเซเว่น สาขา รัตนอุทิศ ซ.13	958353473	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 129131133 CP ALL (รหัสร้าน_10451) รัตนอุทิศซ.13 - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	Yes	7.01671	100.46182
+11232	U21403	WDS26876	ร้านเซเว่น สาขา ซอยไปดีมาดี	952720970	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 18 CP ALL (รหัสร้าน_11232) ซอยไปดีมาดี อนุสรณ์อาจารย์ทอง หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	7.03137	100.47691
+15484	U97033	WDS28902	ร้านเซเว่น สาขา PTTORหาดใหญ่ใน(ขาออก)	639347398	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 1121/1 ถนนเพชรเกษม หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	6.999803	100.452556
+9828	U17789	WDS24760	ร้านเซเว่น สาขา ซ.20 รัตนอุทิศ	957065181	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 744 CP ALL (รหัสร้าน_9828) ซ.20รัตนอุทิศ - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	7.0196291	100.459197
+10305	U17979	WDS24954	ร้านเซเว่น สาขา ศรีภูวนาถใน	955804516	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 15 หมู่ 1 CP ALL (รหัสร้าน_10305) ศรีภูวนาถใน - ควนลัง หาดใหญ่ สงขลา 90110	Down	Yes	No	6.995201	100.460051
+13699	U93733	WDS22439	ร้านเซเว่น สาขา บ้านท่าเคียน	638737604	TRUE	Cisco819	GPON	สงขลา	โฉนด รหัสสาขา 13699 7-11 สาขา บ้านท่าเคียน - ควนลัง หาดใหญ่ สงขลา 90110	Down	Yes	No	6.99613	100.45667
+11680	U21409	WDS26882	ร้านเซเว่น สาขา ราษฎร์อุทิศเขต8	953087541	TRUE	Cisco819	FIBER	สงขลา	เลขที่ - 548 ราษฎร์อุทิศ 8 ราษฎร์อุทิศ หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	Yes	7.0102661	100.45855
+8566	U91730	WDS14562	ร้านเซเว่น สาขา พลพิชัย	640011076	TRUE	One540	GPON	สงขลา	เลขที่ 117 119 121 123 ถ.พลพิชัย หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	Yes	6.994	100.46461
+16479	U98680	WDS36662	ร้านเซเว่น สาขา ถนนสมบูรณ์ 2	968430327	TRUE	One540	GPON	สงขลา	เลขที่ - 7-ELEVEN รหัสสาขา 16479 7-11 ถนนสมบูรณ์ 2 - ควนลัง หาดใหญ่ สงขลา 90110	Down	Yes	No	6.993999	100.453945
+4528	U60791	WDS17330	ร้านเซเว่น สาขา ปตท.คลองหวะ	641829160	TRUE	One540	FIBER	สงขลา	เลขที่ 25/2 หมู่ 1 ถ.เลี่ยงเมือง (สายเอเชีย) ควนลัง หาดใหญ่ สงขลา 90110	Down	Yes	No	6.98004	100.460197
+8398	U17991	WDS24964	ร้านเซเว่น สาขา ทุ่งลุง 3	953947436	TRUE	One540	GPON	สงขลา	เลขที่ - 360/1 CP ALL (รหัสร้าน_8398) ทุ่งลุง3 - พะตง หาดใหญ่ สงขลา 90230	Down	Yes	Yes	6.835421	100.465032
+807	U17994	WDS24967	ร้านเซเว่น สาขา ทุ่งลุง	955807859	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 119/1 หมู่ 1 CP ALL (รหัสร้าน_807) ทุ่งลุง(หาดใหญ่) - พะตง หาดใหญ่ สงขลา 90230	Down	Yes	No	6.854348	100.470265
+17553	U52100	WDS39657	ร้านเซเว่น สาขา ถนนท่าโพธิ์	971373150	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ - 7-11 รหัสสาขา 17553 ถนนท่าโพธิ์ - พังลา สะเดา สงขลา 90170	Down	Yes	No	6.787914	100.449144
+13203	U21439	WDS26907	ร้านเซเว่น สาขา ปตท.นาทวี-คลองแงะ	952705265	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 34/4 หมู่ที่ 4 ปตท.นาทวีคลองแงะ นาทวี นาทวี สงขลา 90160	Down	Yes	Yes	6.7452524	100.67833
+11677	U21421	WDS26892	ร้านเซเว่น สาขา ถนนวิเชียรชม	972856745	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 43-43/1-7 CP ALL (รหัสร้าน_11677) ถนนวิเชียรชม(RS) - บ่อยาง เมืองสงขลา สงขลา 90000	Down	Yes	No/Online	7.2049585	100.587805
+9390	U60784	WDS17321	ร้านเซเว่น สาขา อำเภอเทพา	640012513	TRUE	One540	FIBER	สงขลา	30 ถ.เกษตรขันธ์ เทพา เทพา สงขลา 90150	Down	Yes	Yes	6.827894	100.965181
+13702	U21415	WDS26888	ร้านเซเว่น สาขา ปตท.ถนนกองบิน56-คลองหอยโข่ง	0659363117(A)	AIS	Cisco819	FIBER	สงขลา	เลขที่ - 27/2 หมู่ที่ 8 ปตท.ถนนกองบิน 56 คลองหอยโข่ง โคกม่วง คลองหอยโข่ง สงขลา 90110	Online via WDS	No	Mobile Site down	6.9293157	100.407086
+11735	U21442	WDS26910	ร้านเซเว่น สาขา ถนนบ้านพรุธานี	952723073	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 53/5-7 CP ALL (รหัสร้าน_11735) ถนนบ้านพรุธานี - บ้านพรุ หาดใหญ่ สงขลา 90250	Down	Yes	No	6.936594	100.459419
+18896	U72632	WDS44720	ร้านเซเว่น สาขา นิพัทธ์สงเคราะห์ 5 (หาดใหญ่)	902168382	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 18896 นิพัทธ์สงเคราะห์ 5 (หาดใหญ่) - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	Yes	7.02185	100.476317
+17382	U51945	WDS39371	ร้านเซเว่น สาขา หมู่บ้านนครินทร์ธานี	971099143	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ - 7-ELEVEN รหัสสาขา 17382 หมู่บ้านนครินทร์ธานี - ควนลัง หาดใหญ่ สงขลา 90110	Down	No	Mobile Site down	6.975864	100.45131
+11451	U21406	WDS26879	ร้านเซเว่น สาขา ถนนทุ่งใหญ่ (หาดใหญ่)	648945506	TRUE	One540	GPON	สงขลา	เลขที่ - ถนนทุ่งใหญ่ ทุ่งใหญ่ คลองแห หาดใหญ่ สงขลา 90110	Down	Yes	No	7.036869	100.467503
+15182	U95752	WDS28270	ร้านเซเว่น สาขา ตำบลคูเต่า	0612655276(A)	AIS	Cisco819	GPON	สงขลา	เลขที่ - คูเต่า หาดใหญ่ สงขลา 90110	Down	No	Mobile Site down	7.11305	100.46947
+1097	U91265	WDS13050	ร้านเซเว่น สาขา นิพัทธ์สงเคราะห์1	972703287	TRUE	Cisco819	GPON	สงขลา	เลขที่ 41/185 ถ.นิพัทธ์สงเคราะห์ 1 หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	No	Mobile Site down	7.023505	100.470042
+9794	U17978	WDS24953	ร้านเซเว่น สาขา เพชรเกษม ซ.30	954096357	TRUE	Cisco819	FIBER	สงขลา	เลขที่ - 1122/2 CP ALL (รหัสร้าน_9794) เพชรเกษมซ.30 - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Checking..		7.000694	100.452592
+16275	U68777	WDS35704	ร้านเซเว่น สาขา ปากบาง(สะกอม)	953676673	TRUE	One540	FIBER	สงขลา	เลขที่ - โฉนด รหัสสาขา16275 สาขาปากบาง(สะกอม) - สะกอม เทพา สงขลา 90150	Down	Yes	No	6.94839	100.830768
+8544	U17788	WDS24759	ร้านเซเว่น สาขา ร.พ.กรุงเทพหาดใหญ่	955230595	TRUE	One540	GPON	สงขลา	เลขที่ - 75 CP ALL (รหัสร้าน_8544) รพ.กรุงเทพ-หาดใหญ่ - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Checking..		7.015337	100.485223
+15107	U95151	WDS28112	ร้านเซเว่น สาขา ตลาดปิ่นทองบ้านพรุ	639342757	TRUE	Cisco819	GPON	สงขลา	เลขที่ - โฉนด บ้านพรุ หาดใหญ่ สงขลา 90250	Down	Checking..		6.96340331	100.4723709
+14563	U94565	WDS26182	ร้านเซเว่น สาขา เพชรเกษมซอย45	953620473	TRUE	Cisco819	GPON	สงขลา	เลขที่ โฉนด หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Checking..		6.99866463	100.436952
+1213	U87985	WDS13051	ร้านเซเว่น สาขา ราษฏร์ยินดี	972796474	TRUE	Cisco819	FIBER	สงขลา	เลขที่ 359 ถ.ศุภสารรังสรรค์ หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Checking..		7.008885	100.483196
+8988	U92146	WDS14572	ร้านเซเว่น สาขา จะนะ2	910289730	TRUE	One540	GPON	สงขลา	เลขที่ 8 หมู่ 2ถ.จะนะ - นาทวี บ้านนา จะนะ สงขลา 90130	Down	Yes	No	6.91441	100.73651
+2441	U21441	WDS26909	ร้านเซเว่น สาขา จะนะ	952700810	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 76_78 หมู่ที่ 2 จะนะ-บ้านนา จะนะ สงขลา 90130	Down	Checking..		6.9788175	100.768109
+3049	U91321	WDS14524	ร้านเซเว่น สาขา คลองเตยหาดใหญ่	640011030	TRUE	Cisco819	GPON	สงขลา	15/77 หมู่ 1 คอหงส์ หาดใหญ่ สงขลา 90110	Down	Checking..		7.024083	100.486298
+8874	U91734	WDS14566	ร้านเซเว่น สาขา ตลาดคลองเตย(หาดใหญ่)	910289721	TRUE	One540	GPON	สงขลา	185/68-69 หมู่ที่ 1 คอหงส์ หาดใหญ่ สงขลา 90110	Down	Checking..		7.029555	100.485389
+9393	U91827	WDS14573	ร้านเซเว่น สาขา คลองแห	0655076230(A)	AIS	One540	GPON	สงขลา	58/8 หมู่ 4 คลองแห หาดใหญ่ สงขลา 90110	Down	Checking..		7.05051	100.474619
+9749	U92148	WDS14577	ร้านเซเว่น สาขา ภาษีเจริญบ้านพรุ	910289732	TRUE	One540	GPON	สงขลา	เลขที่ 43 ถ.สราญราษฏร์ บ้านพรุ หาดใหญ่ สงขลา 90110	Online	Checking..		6.95889	100.472985
+11288	U21405	WDS26878	ร้านเซเว่น สาขา ถนนอัมพวัน (หาดใหญ่)	952721238	TRUE	One540	GPON	สงขลา	เลขที่ - 95/7 หมู่ที่ 3 ถนนอัมพวัน คลองแห หาดใหญ่ สงขลา 90110	Down	Checking..		7.0496596	100.4650019
+13215	U17247	WDS25230	ร้านเซเว่น สาขา ถนนนวลแก้วอุทิศ	957988078	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 7-11 CP ALL (รหัสร้าน_13215) ถนนนวลแก้วอุทิศ - คอหงส์ หาดใหญ่ สงขลา 90110	Down	Checking..		7.0291285	100.4888172
+13304	U21412	WDS26885	ร้านเซเว่น สาขา เพชรเกษมซ.1	973268943	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 912 CP ALL (รหัสร้าน_13304) เพชรเกษม ซ.1 เพชรเกษม หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Checking..		7.0194921	100.4942585
+14112	U94228	WDS25331	ร้านเซเว่น สาขา คลองแห-คูเต่า	638736858	TRUE	Cisco819	GPON	สงขลา	เลขที่ 18/17 18/18 18/19 18/20 หมู่ที่ 5 คลองแห หาดใหญ่ สงขลา 90110	Down	Checking..		7.05403	100.47679
+14320	U94371	WDS25769	ร้านเซเว่น สาขา บ้านโคกเมา(บางกล่ำ)	658760795	TRUE	Cisco819	GPON	สงขลา	เลขที่ - ถนนท่าช้าง บางกล่ำ สงขลา 90110	Down	Checking..		7.02955	100.43976
+14709	U94755	WDS26493	ร้านเซเว่น สาขา เพชรเกษมซ.10	953616353	TRUE	One540	GPON	สงชลา	เลขที่ โฉนดที่ดินเลขที่ 7423 หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Checking..		7.021779	100.482045
+15931	U97626	WDS31079	ร้านเซเว่น สาขา กาญจนวนิช(แยกคลองหวะ)	958748376	TRUE	One540	GPON	สงขลา	เลขที่ - รหัสสาขา_15931 กาญจนวนิช(แยกคลองหวะ) - คอหงส์ หาดใหญ่ สงขลา 90110	Down	Checking..		6.9829246	100.4811394
+16164	U68765	WDS35685	ร้านเซเว่น สาขา ตำบลบ้านหาร(บางกล่ำ)	0659363764(A)	AIS	One540	FIBER	สงขลา	เลขที่ - ATM 7-11 รหัสสาขา 16164 สาขาบ้านหาร(บางกล่ำ) - บ้านหาร บางกล่ำ สงขลา 90110	Down	Checking..		7.06188	100.45197
+16198	U98284	WDS35622	ร้านเซเว่น สาขา ตำบลบ้านนา(จะนะ)	953651860	TRUE	One540	GPON	สงขลา	เลขที่ - 7/6-8 หมู่ 1 รหัสสาขา 16198 บ้านนา(จะนะ) หาดใหญ่ -ปัตตานี บ้านนา จะนะ สงขลา 90130	Down	Checking..		6.9004174	100.7718025
+16287	U98377	WDS35705	ร้านเซเว่น สาขา ถนนนครใน	953676687	TRUE	One540	GPON	สงขลา	เลขที่ - โฉนด รหัสสาขา16287 สาขาถนนนครใน - หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Checking..		7.20139	100.58852
+16699	U99210	WDS37317	ร้านเซเว่น สาขา PTTOR หาดใหญ่ (ช่องเขา)	640432893	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 486 รหัสสาขา 16699 PTTOR หาดใหญ่(ช่องเขา) ศุภสารรังสรรค์ หาดใหญ่ หาดใหญ่ สงขลา 90110	Online	Checking..		7.008518	100.487035
+16703	U99215	WDS37325	ร้านเซเว่น สาขา ตำบลทุ่งใหญ่	640435605	TRUE	Cisco819	GPON	สงขลา	เลขที่ - โฉนด ซีพีออลล์ รหัส_16703 ตำบลทุ่งใหญ่ - น้ำน้อย หาดใหญ่ สงขลา 90110	Down	Checking..		7.065961	100.539249
+17406	U51971	WDS39396	ร้านเซเว่น สาขา ถนนบางนา(บางกล่ำ)	971102041	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ - 7-ELEVEN รหัสสาขา 17406 ถนนบางนา(บางกล่ำ) - ท่าช้าง บางกล่ำ สงขลา 90110	Down	Checking..		7.024616	100.442732
+17612	U52204	WDS40116	ร้านเซเว่น สาขา ถนนกาญจนราเมศวร์	971502814	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ - 7-11 รหัสสาขา 17612 ถนนกาญจนราเมศวร์ - คลองแห หาดใหญ่ สงขลา 90110	Down	Checking..		7.058758	100.49023
+623	U16406	WDS24178	ร้านเซเว่น สาขา เคหะชุมชนสงขลา	967510701	TRUE	One540	GPON	สงขลา	เลขที่ - 57/4 CP ALL (รหัสร้าน_623) เคหะชุมชน-สงขลา ราษฎร์อุทิศ1 บ่อยาง เมืองสงขลา สงขลา 90000	Online			7.18254	100.599755
+5713	U17018	WDS24333	ร้านเซเว่น สาขา ราษฎร์อุทิศ 1 ซ. 17	967509476	TRUE	One540	GPON	สงขลา	เลขที่ - 559/3 CP ALL (รหัสร้าน_5713) ราษฎร์อุทิศ 1 ซอย 17 ราษฎร์อุทิศ1 บ่อยาง เมืองสงขลา สงขลา 90000	Down			7.174465	100.606248
+15999	U97999	WDS32482	ร้านเซเว่น สาขา ถนน 30 เมตร	838236831	TRUE	One540	GPON	สงขลา	เลขที่ - 126/4 หมู่ 8 SHOP ID:15999 สาขา ถนน 30 เมตร - เขารูปช้าง เมืองสงขลา สงขลา 90000	Down			7.162776	100.6071234
+11772	U21431	WDS26899	ร้านเซเว่น สาขา ถนนสงขลา-นวมินทร์	952696487	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 197/42 หมู่ 8 CP ALL (รหัสร้าน_11772) ถนนสงขลา-นวมินทร์ สงขลา-นวมินทร์ พะวง เมืองสงขลา สงขลา 90100	Down			7.2148114	100.5832604
+17062	U51344	WDS38052	ร้านเซเว่น สาขา แม่เปี๊ยะ(นาหม่อม)	966897535	TRUE	One540	GPON	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 17062 แม่เปี๊ยะ(นาหม่อม) - คลองหรัง นาหม่อม สงขลา 90310	Online via Wireline
+	6.950669	100.565434
+16420	U98591	WDS36039	ร้านเซเว่น สาขา ตำบลนาทับ	953698376	TRUE	One540	GPON	สงขลา	เลขที่ - โฉนด รหัสสาขา 16420 7-11 ตำบลนาทับ - นาทับ จะนะ สงขลา 90130	Online			7.064659	100.693452
+2413	U91757	WDS13742	ร้านเซเว่น สาขา ย่านตาขาว	917094197	TRUE	Cisco819	GPON	ตรัง	เลขที่ 32 หมู่ 1 ถ.ตรัง-ปะเหลียน ย่านตาขาว ย่านตาขาว ตรัง 92140	Down	Yes	No	7.375549	99.676988
+17813	U52951	WDS40893	ร้านเซเว่น สาขา PTTOR สายบุรี	972527590	TRUE	AR617VW-LTE	GPON	ปัตตานี	เลขที่ - 7-ELEVEN รหัสสาขา 17813 PTTOR สายบุรี - ตะลุบัน สายบุรี ปัตตานี 94110	Down	Checking..		6.7017	101.61227
+13820	U19435	WDS25727	ร้านเซเว่น สาขา วิฑูรอุทิศ 4	973151853	TRUE	Cisco819	GPON	ยะลา	เลขที่ - 70 ,72 CP ALL (รหัสร้าน_13820) สาขาวิฑูรอุทิศ 4 วิฑูรอุทิศ 4 สะเตง เมืองยะลา ยะลา 95000	Down	Yes	No	6.562751	101.295042
+15692	U97326	WDS30044	ร้านเซเว่น สาขา บ้านสถิตย์ภิรมย์	953623086	TRUE	Cisco819	GPON	ยะลา	เลขที่ - 99/115,99/116,99/117, 99/118 หมู่ที่ 1 เมืองยะลา ยะลา 95000	Online	Yes	No	6.52839	101.291282
+19044	U72736	WDS45499	ร้านเซเว่น สาขา ซอยโรงสี	964709160	TRUE	AR611-LTE	GPON	ยะลา	เลขที่ - 243/39 ม.12 รหัสสาขา 19044 ซอยโรงสี - สะเตงนอก เมืองยะลา ยะลา 95000	Online	Checking..		6.5359	101.300355
+5554	U19619	WDS25691	ร้านเซเว่น สาขา ศรีปุตรา	972891306	TRUE	Cisco819	GPON	ยะลา	เลขที่ - 808 CP ALL (รหัสร้าน_5554) ศรีปุตรา รหัสสาขา5554 สิโรรส สะเตง เมืองยะลา ยะลา 95000	Down	Checking..		6.56945	101.296467
+13121	U19401	WDS25716	ร้านเซเว่น สาขา หน้าโคลีเซียม	834907425	TRUE	Cisco819	GPON	ยะลา	เลขที่ - หน้าโคลีเซียม สะเตง เมืองยะลา ยะลา 95000	Online	Yes	No	6.559102	101.289389
+15883	U97473	WDS30958	PTTOR ลำใหม่(ยะลา)	955827349	TRUE	One540	GPON	ยะลา	เลขที่ - 85/11 รหัสสาขา 15883 PTTOR ลำใหม่(ยะลา) 85/11 ลำใหม่ เมืองยะลา ยะลา 95160	Down	Checking..		6.582682	101.19729
+4977	U19450	WDS25480	ร้านเซเว่น สาขา ธนวิถี	648944348	TRUE	One540	GPON	ยะลา	เลขที่ - 8-10 ธนวิถี เทศบาล4 สะเตง เมืองยะลา ยะลา 95000	Down	Checking..		6.552215	101.294494
+6496	U92861	WDS17332	ร้านเซเว่น สาขา ปตท.ละงู	641807891	TRUE	Cisco819	GPON	สตูล	เลขที่ 222 หมู่ 9 ละงู ละงู สตูล 91110	Down	Yes	No	6.885442	99.809354
+1918	U91755	WDS14583	ร้านเซเว่น สาขา ละงู	910289739	TRUE	One540	GPON	สตูล	เลขที่ 38-39 หมู่ที่ 4 กำแพง ละงู สตูล 91110	Down	Yes	No	6.881611	99.784436
+8636	U19498	WDS25529	ร้านเซเว่น สาขา ตลาดเมืองใหม่	917732147	TRUE	One540	GPON	ยะลา	เลขที่ - 291-293 ตลาดเมืองใหม่ เปรมจิตต์ สุรพันธ์ สะเตง เมืองยะลา ยะลา 95000	Online	Checking..		6.557744	101.277805
+13120	U19398	WDS25713	ร้านเซเว่น สาขา จารูพัฒนา 2	648944739	TRUE	One540	GPON	ยะลา	เลขที่ - ที่ดินเปล่า CP ALL (รหัสร้าน_13120) สาขาจารูพัฒนา 2 รหัส 13120 - สะเตง เมืองยะลา ยะลา 95000	Online	Checking..		6.5782077	101.2977048
+17947	U72080	WDS41131	ร้านเซเว่น สาขา บ้านเนียง	0612741260(A)	AIS	AR617VW-LTE	GPON	ยะลา	เลขที่ - 96/5 หมู่ 4 7-11 รหัสสาขา 17947 สาขาบ้านเนียง - เปาะเส้ง เมืองยะลา ยะลา 95000	Online	Checking..		6.526848	101.199789
+16447	U98631	WDS36073	ร้านเซเว่น สาขา บ้านในใส	953707427	TRUE	One540	GPON	สตูล	เลขที่ - 186 หมู่ 15 7-11 รหัสสาขา 16447 บ้านในใส - ละงู ละงู สตูล 91110	Down	Checking..		6.868344	99.782266
+9346	U19508	WDS25580	ร้านเซเว่น สาขา ซอยเพชรสุภา	953154254	TRUE	One540	GPON	ปัตตานี	เลขที่ - 179/4,179/5 ซอยเพชรสุภา ยะรัง จะบังติกอ เมืองปัตตานี ปัตตานี 94000	Down			6.854237	101.252798
+9396	U19466	WDS25493	ร้านเซเว่น สาขา หน้าศาลากลาง	953684140	TRUE	Cisco819	GPON	ปัตตานี	เลขที่ - 44,46,48 เดชา สะบารัง เมืองปัตตานี ปัตตานี 94000	Down			6.8674	101.251377
+7793	U19374	WDS25567	ร้านเซเว่น สาขา ถนนมะกรูด ซอย 2	952642864	TRUE	One540	GPON	ปัตตานี	เลขที่ - 76 ซอย 2 มะกรูด สะบารัง เมืองปัตตานี ปัตตานี 94000	Down			6.865336	101.246081
+19222	U72910	WDS46007	ร้านเซเว่น สาขา ห้วยโอน	966526504	TRUE	AR611-LTE	GPON	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 19222 ห้วยโอน - กำแพงเพชร รัตภูมิ สงขลา 90180	Online	No/Online				
+10089	U17982	WDS24956	ร้านเซเว่น สาขา ถนนปุณกัณฑ์	954096240	TRUE	Cisco819	FIBER	สงขลา	เลขที่ - 41/6 หมู่ที่ 6 CP ALL (รหัสร้าน_10089) ถนนปุณณกัณฑ์ คอหงส์ หาดใหญ่ สงขลา 90110	Online	Yes	No	7.001688	100.500647
+15827	U66722	WDS30558	ถนนทุ่งรี-โคกวัด	955482149	TRUE	Cisco819	FIBER	สงขลา	เลขที่ - 47/4 รหัสสาขา 15827 ถนนทุ่งรี-โคกวัด 47/4 คอหงส์ หาดใหญ่ สงขลา 90110	Online	Yes	No	7.000198	100.501139
+9051	U91736	WDS14568	ร้านเซเว่น สาขา หน้าหอประชุมมอ.	910289724	TRUE	One540	GPON	สงขลา	43/199 หมู่ที่ 6 คอหงส์ หาดใหญ่ สงขลา 90000	Online	Yes	No	7.00013	100.505938
+8547	U92196	WDS14564	ร้านเซเว่น สาขา ปุณกันฑ์3	640011080	TRUE	One540	GPON	สงขลา	เลขที่ 99/40 หมู่ 3 คอหงส์ หาดใหญ่ สงขลา 90110	Online	Yes	No	7.00183592	100.497164
+9566	U88051	WDS14574	ร้านเซเว่น สาขา สามแยกโตนงาช้าง	0659512936(A)	AIS	One540	FIBER	สงขลา	15/2 15/3 15/11 หมู่3 ทุ่งตำเสา หาดใหญ่ สงขลา 90110	Online	Yes	No	6.976723	100.340331
+11985	U21445	WDS26913	ร้านเซเว่น สาขา บ้านสามบ่อ	952708027	TRUE	One540	GPON	สงขลา	เลขที่ - 70 หมู่ที่ 3 บ้านสามบ่อ ระวะ ระโนด สงขลา 90140	Online	Yes	No/Online				
+13015	U21411	WDS26884	ร้านเซเว่น สาขา ถนนทวีรัตน์	648944930	TRUE	One540	GPON	สงขลา	เลขที่ - ถนนทวีรัตน์ ทวีรัตน์ คอหงส์ หาดใหญ่ สงขลา 90110	Online	Yes	No/Online				
+14226	U63319	WDS25244	ร้านเซเว่น สาขา คลองเปี๊ยะ	0659363060(A)	AIS	Cisco819	FIBER	สงขลา	เลขที่ - จะโหนง จะนะ สงขลา 90130	Online	Yes	No/Online				
+7001	U91724	WDS14549	ร้านเซเว่น สาขา ซอยทวีวรรณ	640011061	TRUE	One540	GPON	สงขลา	เลขที่ 147 149 ถ.กาญจนวณิชย์ หาดใหญ่ หาดใหญ่ สงขลา 90110	Online	Yes	No/Online	6.997216	100.488271
+2892	U17785	WDS24757	ร้านเซเว่น สาขา บขส.หาดใหญ่	955322752	TRUE	One540	GPON	สงขลา	เลขที่ - 143 CP ALL (รหัสร้าน_2892) บขส.หาดใหญ่ - หาดใหญ่ หาดใหญ่ สงขลา 90110	Online	Yes	No/Online	6.995096	100.483082
+18648	U72412	WDS44020	ร้านเซเว่น สาขา กาญจนวนิช (ทุ่งลุง)	640190717	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 18648 กาญจนวนิช (ทุ่งลุง) - พะตง หาดใหญ่ สงขลา 90230	Online	Yes	No	6.83694	100.466465
+5290	U60788	WDS17325	ร้านเซเว่น สาขา ตลาดคลองหอยโข่ง	0659517918(A)	AIS	One540	FIBER	สงขลา	เลขที่ 300 หมู่ 2 คลองหอยโข่ง คลองหอยโข่ง สงขลา 90230	Online	Yes	No	6.925122	100.417063
+7164	U19612	WDS25684	ร้านเซเว่น สาขา ปตท.นาทวีออยล์	953153384	TRUE	Cisco819	FIBER	สงขลา	เลขที่ - 81/1 หมู่ที่ 5 ปตท.นาทวีออยส์ ฉาง นาทวี สงขลา 90160	Online	Yes	No				
+14111	U63318	WDS25243	ร้านเซเว่น สาขา นาทวี-ด่านประกอบ	0659363033(A)	AIS	Cisco819	FIBER	สงขลา	เลขที่ ( ยังไม่มีเลขที่บ้าน ) นาทวี นาทวี สงขลา 90160	Online	Yes	No	6.739911	100.696496
+2132	U91311	WDS14518	ร้านเซเว่น สาขา เทคนิคหาดใหญ่	640011021	TRUE	Cisco819	GPON	สงขลา	472 474 ถ.กาญจนวานิชย์ หาดใหญ่ หาดใหญ่ สงขลา 90110	Online	Checking..		7.033641	100.501962
+5436	U17011	WDS24325	ร้านเซเว่น สาขา ตลาดคลองแงะ	967507258	TRUE	One540	GPON	สงขลา	เลขที่ - 41/1 หมู่ 5 CP ALL (รหัสร้าน_5436) ตลาดคลองแงะ คลองแงะ-นาทวี พังลา สะเดา สงขลา 90120	Online	Checking..				
+6133	U92860	WDS17327	ร้านเซเว่น สาขา อาเซี่ยนพลาซ่า	641807890	TRUE	Cisco819	GPON	สงขลา	เลขที่ 1468/1 1468/2 ถ.กาญจนวณิชย์ หาดใหญ่ หาดใหญ่ สงขลา 90110	Online	Checking..				
+6368	U17990	WDS24965	ร้านเซเว่น สาขา ถนนสนามบินหาดใหญ่	955804060	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 1728 หมู่ 3 CP ALL (รหัสร้าน_6368) ถนนสนามบินหาดใหญ่ - ควนลัง หาดใหญ่ สงขลา 90110	Online	Checking..		6.957467	100.421462
+7166	U92855	WDS17315	ร้านเซเว่น สาขา ปตท.คลองแห	641807872	TRUE	Cisco819	GPON	สงขลา	เลขที่ 89/13 หมู่ 11 คลองแห หาดใหญ่ สงขลา 90110	Online	Checking..		7.061242	100.485919
+9332	U17111	WDS24427	ร้านเซเว่น สาขา บ้านปริก	967507128	TRUE	One540	GPON	สงขลา	เลขที่ - 95,97 CP ALL (รหัสร้าน_9332) บ้านปริก กาญจนวนิช3 ปริก สะเดา สงขลา 90120	Online	Checking..				
+9578	U60786	WDS17323	ร้านเซเว่น สาขา นาสีทอง	0659469062(A)	AIS	One540	FIBER	สงขลา	เลขที่ 15/7 หมู่ 1 เขาพระ รัตภูมิ สงขลา 90180	Online	Checking..				
+11045	U21397	WDS26870	ร้านเซเว่น สาขา พรุฉิมพลี ซอย 1	952728632	TRUE	One540	GPON	สงขลา	เลขที่ - พรุฉิมพลี ซอย 1 ควนลัง หาดใหญ่ สงขลา 90110	Online	Checking..		6.982619	100.427017
+14084	U21417	WDS26890	ร้านเซเว่น สาขา ถนนสนามบิน(แอร์พอร์ท)	952722634	TRUE	Cisco819	GPON	สงขลา	เลขที่ - GREENFIELD ถนนสนามบิน(แอร์พอร์ต) ควนลัง หาดใหญ่ สงขลา 90110	Online	Checking..		6.950437	100.416265
+14404	U63569	WDS25439	ร้านเซเว่น สาขา ท่าอากาศย่านหาดใหญ่	658743565	TRUE	Cisco819	FIBER	สงขลา	เลขที่ 99 หมู่ 3 ถนน สนามบินพาณิชย์ คลองหลา คลองหอยโข่ง สงขลา 90115	Online	Checking..		6.936674	100.393077
+14750	U94801	WDS27641	ร้านเซเว่น สาขา ตำบลน้ำน้อย	953618342	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ 114 หมู่ 1 น้ำน้อย หาดใหญ่ สงขลา 90110	Online	Checking..		7.062633	100.524882
+15045	U95156	WDS28129	ร้านเซเว่น สาขา HatyaiElegance	639342928	TRUE	Cisco819	GPON	สงขลา	เลขที่ - โฉนด ควนลัง หาดใหญ่ สงขลา 90110	Online	Checking..		6.9662724	100.427783
+16648	U98987	WDS37123	ร้านเซเว่น สาขา บางกล่ำ	0612655246(A)	AIS	Cisco819	GPON	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 16648 สาขาบางกล่ำ - - บางกล่ำ บางกล่ำ สงขลา 90110	Online	Checking..		7.08681	100.41062
+16776	U99595	WDS37431	ร้านเซเว่น สาขา PTTOR สนามบินหาดใหญ่	640465728	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 965 หมู่ 1 รหัสสาขา 16776 PTTOR สนามบินหาดใหญ่ สนามบิน-ลพบุรีราเมศวนร์ ควนลัง หาดใหญ่ สงขลา 90110	Online	Checking..		6.972472	100.429336
+17975	U53074	WDS41226	ร้านเซเว่น สาขา ตำบลเขาพระ	966861831	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 17975 ตำบลเขาพระ - เขาพระ รัตภูมิ สงขลา 90180	Online	Checking..		7.04089	100.160161
+18506	U53677	WDS43310	ร้านเซเว่น สาขา PTTOR หน้าสวนสาธารณะ (หาดใหญ่)	964201901	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ - 270/2 รหัสสาขา 18506 7-11 PTTOR หน้าสวนสาธารณะ - หาดใหญ่ หาดใหญ่ สงขลา 90110	Online	Checking..		7.039958	100.503088
+18652	U72408	WDS44010	ร้านเซเว่น สาขา ปักธง(หาดใหญ่)	966758127	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ - โฉนด รหัสสาขา 18652 7-11 ปักธง(หาดใหญ่) - คอหงส์ หาดใหญ่ สงขลา 90110	Online	Checking..		6.972939	100.48864
+18691	U72475	WDS44283	ร้านเซเว่น สาขา คลองยา(บ้านพรุ)	910378875	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ - โฉนด รหัสสาขา 18691 คลองยา(บ้านพรุ) - บ้านพรุ หาดใหญ่ สงขลา 90250	Online	Checking..		6.937208	100.470227
+19453	U73093	WDS46533	ร้านเซเว่น สาขา หน้าสนามบินหาดใหญ่	954405613	TRUE	AR611-LTE	GPON	สงขลา	เลขที่ - โฉนด รหัสสาขา 19453 7-11 หน้าสนามบินหาดใหญ่ - คลองหลา คลองหอยโข่ง สงขลา 90110	Online	Checking..		6.94076	100.40179
+19956	U73744	WDS47778	ร้านเซเว่น สาขา ตำบลพะตง	889805550	TRUE	AR611-LTE	GPON	สงขลา	เลขที่ - 7-ELEVEN รหัสสาขา 19956 ตำบลพะตง - พะตง หาดใหญ่ สงขลา 90230	Online	Checking..		6.8587	100.470713
+9322	U21436	WDS26904	ร้านเซเว่น สาขา บ้านเขารักเกียรติ	648945905	TRUE	Cisco819	GPON	สงขลา	เลขที่ - บ้านเขารักเกียรติ เพชรเกษม-กำแพงเพชร รัตภูมิ สงขลา 90180	Online			7.070997	100.257559
+9759	U92147	WDS14576	ร้านเซเว่น สาขา ปตท.รัตภูมิ	910289731	TRUE	One540	GPON	สงขลา	465 หมู่ 1 กำแพงเพชร รัตภูมิ สงขลา 90180	Online			7.135216	100.261414
+15847	U97459	WDS30563	ร้านเซเว่น สาขา กาญจนวนิช ซอย 69	955671058	TRUE	Cisco819	GPON	สงขลา	เลขที่ - ร้าน 7-11 สาขา กาญจนวนิช ซอย 69 7-11 รหัสสาขา 15847 ร้าน 7-11 เขารูปช้าง เมืองสงขลา สงขลา 90000	Online			7.14396	100.591241
+18869	U72646	WDS44739	ร้านเซเว่น สาขา สหกรณ์ครูออมทรัพย์-สงขลา	902215908	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ - 7-11 รหัสสาขา 18869 สหกรณ์ครูออมทรัพย์-สงขลา - น้ำน้อย หาดใหญ่ สงขลา 90110	Online			7.121331	100.54447
+15922	U73902	WDS31064	ร้านเซเว่น สาขา บ้านโสร่ง	0655204226(A)	AIS	AR611-LTE	GPON	ปัตตานี	เลขที่ - 7-ELEVEN รหัสสาขา 15922 บ้านโสร่ง - เขาตูม ยะรัง ปัตตานี 94160	Online	Checking..				
+4384	U19376	WDS25569	ร้านเซเว่น สาขา ถนนนาเกลือ 2	952615186	TRUE	One540	GPON	ปัตตานี	เลขที่ - 122/22 หมู่ที่ 8 ถนนนาเกลือ บานา เมืองปัตตานี ปัตตานี 94000	Online	Checking..				
+4007	U19362	WDS25555	ร้านเซเว่น สาขา ปตท.ส.กมลวัฒนา	952615843	TRUE	One540	GPON	ปัตตานี	เลขที่ - 162/42 หมู่ที่ 11 ปตท.ส.กลมวัฒนา บานา เมืองปัตตานี ปัตตานี 94000	Online	Checking..				
+6810	U19530	WDS25602	ร้านเซเว่น สาขา ปตท.ปาลัส	952654784	TRUE	One540	GPON	ปัตตานี	เลขที่ - 7/5 หมู่ที่ ที่1 CP ALL (รหัสร้าน_6810) ปตท.ปะนาเระ 6810 - ควน ปะนาเระ ปัตตานี 94130	Online	Checking..				
+19398	U73005	WDS46299	ร้านเซเว่น สาขา บางปู	997416968	TRUE	AR611-LTE	GPON	ปัตตานี	เลขที่ - 9 ม.3 รหัสสาขา 19398 บางปู - บางปู ยะหริ่ง ปัตตานี 94150	Online	Checking..		6.87051	101.34834
+16367	U98468	WDS35991	ร้านเซเว่น สาขา ตือเบาะ 2	953681435	TRUE	One540	GPON	ยะลา	เลขที่ - 127/14 หมู่ 10 รหัส_16367 ตือเบาะ 2 - สะเตง เมืองยะลา ยะลา 95000	Online	Checking..		6.5260526	101.294379
+5101	U19549	WDS25622	ร้านเซเว่น สาขา หน้า ร.พ. นราธิวาส	941495068	TRUE	Cisco819	GPON	นราธิวาส	เลขที่ - 285 หน้า ร.พ. นราธิวาส ระแงะมรรคา บางนาค เมืองนราธิวาส นราธิวาส 96000	Online	Checking..				
+5559	U61016	WDS17109	ร้านเซเว่น สาขา FR.ศรีสาคร	0659467934(A)	AIS	One540	GPON	นราธิวาส	เลขที่ 41 หมู่ 1 ศรีสาคร ศรีสาคร นราธิวาส 96210	Online	Checking..				
+18162	U53305	WDS42065	ร้านเซเว่น สาขา หน้าโรงพยาบาลจะแนะ	0612658774(A)	AIS	AR617VW-LTE	GPON	นราธิวาส	เลขที่ - โฉนด รหัสสาขา 18162 หน้าโรงพยาบาลจะแนะ - จะแนะ จะแนะ นราธิวาส 96220	Online	Checking..				
+19470	U73067	WDS46431	ร้านเซเว่น สาขา PTTOR จะแนะ	954350593	TRUE	AR611-LTE	GPON	นราธิวาส	เลขที่ - 7-ELEVEN รหัสสาขา 19470 PTTOR จะแนะ - ดุซงญอ จะแนะ นราธิวาส 96220	Online	Checking..				
+16584	U69372	WDS36961	ร้านเซเว่น สาขา กะพ้อ	0659364139(A)	AIS	Cisco819	FIBER	ปัตตานี	เลขที่ - 124/7-124/9 รหัสสาขา 16584 7-11 กะพ้อ - กะรุบี กะพ้อ ปัตตานี 94230	Online	Checking..				
+18031	U53301	WDS42061	ร้านเซเว่น สาขา ปะนาเระ	938106728	TRUE	AR617VW-LTE	GPON	ปัตตานี	เลขที่ - 267/1 หมู่ 4 รหัสสาขา 18031 สาขาปะนาเระ - ปะนาเระ ปะนาเระ ปัตตานี 94130	Online	Checking..				
+7847	U60658	WDS17153	ร้านเซเว่น สาขา ปากพะยูน	639061029	TRUE	One540	FIBER	พัทลุง	752/2-3 หมู่ 1 ปากพะยูน ปากพะยูน พัทลุง 93120	Online	Checking..				
+19979	U73777	WDS47871	ร้านเซเว่น สาขา บ้านพรุพ้อ	812343003	TRUE	AR611-LTE	GPON	พัทลุง	เลขที่ - โฉนด รหัสสาขา 19979 7-11 บ้านพรุพ้อ - โคกทราย ป่าบอน พัทลุง 93170	Online	Checking..		7.195427	100.217077
+5317	U19351	WDS25545	ร้านเซเว่น สาขา วัดเห้งเจีย	996097205	TRUE	Cisco819	GPON	ยะลา	เลขที่ - 245/37 หมู่ที่ 4 วัดเห้งเจีย สะเตงนอก เมืองยะลา ยะลา 95000	Online	Checking..				
+6041	U19381	WDS25572	ร้านเซเว่น สาขา ลำใหม่	0659469571(A)	AIS	Cisco819	GPON	ยะลา	เลขที่ - 25 หมู่ที่ 1 ลำใหม่ เมืองยะลา ยะลา 95000	Online	Checking..		6.579039	101.198144
+16622	U98923	WDS36963	ร้านเซเว่น สาขา PTTOR มัรกัส(ยะลา)	973139746	TRUE	Cisco819	GPON	ยะลา	เลขที่ - 13/4 หมู่ที่ 3 รหัสสาขา 16622 PTTOR มัรกัส(ยะลา) - สะเตง เมืองยะลา ยะลา 95000	Online	Checking..				
+16739	U99205	WDS37312	ร้านเซเว่น สาขา บ้านบันนังดามา	640431641	TRUE	Cisco819	GPON	ยะลา	เลขที่ - 319 หมู่ 1 7-11 รหัสสาขา 16739 บ้านบันนังดามา - กาบัง กาบัง ยะลา 95120	Online	Checking..				
+18544	U72326	WDS43512	ร้านเซเว่น สาขา PTTOR กาบัง	918413286	TRUE	AR617VW-LTE	GPON	ยะลา	เลขที่ - 211/2 หมู่ 1 รหัสสาขา 18544 7-11 PTTOR กาบัง - กาบัง กาบัง ยะลา 95120	Online	Checking..				
+4763	U92215	WDS14585	ร้านเซเว่น สาขา โรงพยาบาลสตูล	0655076409(A)	AIS	One540	GPON	สตูล	เลขที่ 20 ถ.หัตถกรรมศึกษา พิมาน เมืองสตูล สตูล 91000	Online	Checking..		6.617674	100.070083
+4967	U19559	WDS25632	ร้านเซเว่น สาขา ปตท.บ้านควน	648943140	TRUE	Cisco819	GPON	สตูล	เลขที่ - 413 หมู่ 5 CP ALL (รหัสร้าน_4967) ปตท.บ้านควน 4967 - บ้านควน เมืองสตูล สตูล 91000	Online	Checking..		6.698	100.066958
+559	U60793	WDS17334	ร้านเซเว่น สาขา ทุ่งหว้า	641829162	TRUE	One540	FIBER	สตูล	เลขที่ 196 198 หมู่ที่ 2 ทุ่งหว้า ทุ่งหว้า สตูล 91120	Online	Checking..				
+9103	U92197	WDS14589	ร้านเซเว่น สาขา หัตถกรรมศึกษา	0655077488(A)	AIS	One540	GPON	สตูล	57 59 61 63 ถ.หัตถกรรมศึกษา พิมาน เมืองสตูล สตูล 91000	Online	Checking..		6.616814	100.070016
+11072	U21458	WDS26926	ร้านเซเว่น สาขา บ้านท่าจีน (สตูล)	648943078	TRUE	Cisco819	GPON	สตูล	เลขที่ - 708-708/1 หมู่ 6 CP ALL (รหัสร้าน_11072) บ้านท่าจีน(สตูล) - คลองขุด เมืองสตูล สตูล 91000	Online	Checking..				
+13061	U21460	WDS26928	ร้านเซเว่น สาขา สตูลธานีซอย7	953121496	TRUE	Cisco819	FIBER	สตูล	เลขที่ - สตูลธานีซอย7 พิมาน เมืองสตูล สตูล 91000	Online	Checking..		6.620318	100.066346
+15845	U97460	WDS30564	ร้านเซเว่น สาขา แยกฉลุง	955672524	TRUE	Cisco819	GPON	สตูล	เลขที่ - ร้าน 7-11 สาขา แยกฉลุง 7-11 รหัสสาขา 15845 ร้าน 7-11 ฉลุง เมืองสตูล สตูล 91140	Online	Checking..		6.7255727	100.065686
+18293	U53441	WDS42596	ร้านเซเว่น สาขา บ้านปากบารา	902420587	TRUE	AR617VW-LTE	GPON	สตูล	เลขที่ - 7-ELEVEN รหัสสาขา 18293 บ้านปากบารา - ปากน้ำ ละงู สตูล 91110	Online	Checking..				
+19250	U72880	WDS45914	ร้านเซเว่น สาขา ตำบลปากน้ำ	966467976	TRUE	AR611-LTE	GPON	สตูล	เลขที่ - 7-11 รหัสสาขา 19250 ตำบลปากน้ำ - ปากน้ำ ละงู สตูล 91110	Online	Checking..				
+18888	U72644	WDS44737	ร้านเซเว่น สาขา บ้านนายายหม่อม	902211836	TRUE	AR617VW-LTE	GPON	ตรัง	เลขที่ - 7-11 รหัสสาขา 18888 บ้านนายายหม่อม - ทุ่งกระบือ ย่านตาขาว ตรัง 92140	Online			7.392733	99.662752
+10338	U60569	WDS16982	ร้านเซเว่น สาขา ปะเหลียนใน	0659467466(A)	AIS	One540	FIBER	ตรัง	เลขที่ 14 หมู่ 1 ปะเหลียน ปะเหลียน ตรัง 92180	Online			7.327818	99.803084
+13448	U21455	WDS26923	ร้านเซเว่น สาขา ปตท.เขาชัยสน	953133756	TRUE	Cisco819	FIBER	พัทลุง	เลขที่ - 455 หมู่ที่ 1 ปตท.เขาชัยสน ควนขนุน เขาชัยสน พัทลุง 93130	Online			7.4739118	100.07376
+25261	U87814	WDS14071	ร้านเซเว่น สาขา ปตท.ป่าบอน(พัทลุง)	0659513398(A)	AIS	Cisco819	FIBER	พัทลุง	เลขที่ 222 หมู่ 10 ป่าบอน ป่าบอน พัทลุง 93170	Online			7.287756	100.155127
+16763	U99556	WDS37398	ร้านเซเว่น สาขา บ้านป่าบอนต่ำ	0610215617(A)	AIS	Cisco819	GPON	พัทลุง	เลขที่ - รหัสสาขา 16763 7-11 บ้านป่าบอนต่ำ - ป่าบอน ป่าบอน พัทลุง 93170	Online			7.3042039	100.18296
+18556	U87810	WDS14066	ร้านเซเว่น สาขา อ.ป่าบอน	0659513323(A)	AIS	Cisco819	FIBER	พัทลุง	เลขที่ 336 หมู่ 7 หนองธง ป่าบอน พัทลุง 93170	Online			7.279826	100.161108
+18448	U53616	WDS43217	ร้านเซเว่น สาขา ตำบลชุมพล(พัทลุง)	964059957	TRUE	AR617VW-LTE	GPON	พัทลุง	เลขที่ - โฉนด รหัสสาขา 18448 7-11 ตำบลชุมพล(พัทลุง) - ชุมพล ศรีนครินทร์ พัทลุง 93000	Online			7.587349	99.984749
+300	U92142	WDS14590	ร้านเซเว่น สาขา ตลาดละงู	910289747	TRUE	One540	GPON	สตูล	เลขที่ 1570 หมู่ 3 กำแพง ละงู สตูล 91110	Online			6.87842296	99.782981
+12185	U17245	WDS25228	ร้านเซเว่น สาขา ม.หาดใหญ่	955806130	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ - 7-11 CP ALL (รหัสร้าน_12185) ม.หาดใหญ่ - คอหงส์ หาดใหญ่ สงขลา 90110	Online via WDS	Yes	Yes		
+6094	U92150	WDS14581	ร้านเซเว่น สาขา ปตท.ท่าช้าง(บางกล่ำ)	910289737	TRUE	One540	GPON	สงขลา	เลขที่ 189/18 หมู่ 5 ท่าช้าง บางกล่ำ สงขลา 90110	Online	Yes	No	7.007643	100.41365
+13392	U21438	WDS26906	ร้านเซเว่น สาขา บ้านหนองข้อง	0659363092(A)	AIS	Cisco819	GPON	สงขลา	เลขที่ - บ้านหนองข้อง กำแพงเพชร รัตภูมิ สงขลา 90180	Online	Yes	No	7.110686	100.327432
+13965	U62976	WDS22884	ร้านเซเว่น สาขา ปตท.สิริพัฒน์(ท่าช้าง)	0659363143(A)	AIS	Cisco819	FIBER	สงขลา	ร้าน 7-11 รหัสสาขา 13965 สาขาปตท.สิริพัฒน์ ร้าน 7-11 ท่าช้าง บางกล่ำ สงขลา 90110	Online	Yes	No	7.027391	100.40241
+18052	U72104	WDS41712	ร้านเซเว่น สาขา ถนนสายเอเชีย 43	0623109879(A)	AIS	AR617VW-LTE	FIBER	สงขลา	เลขที่ - รหัสสาขา 18052 7-11 ถนนสายเอเชีย 43 - ท่าช้าง บางกล่ำ สงขลา 90110	Online	Yes	No	7.03023	100.398885
+3560	U90954	WDS14529	ร้านเซเว่น สาขา ละม้ายสงเคราะห์	640011037	TRUE	Cisco819	GPON	สงขลา	เลขที่ 21/10 ถ.หอยมุกต์ หาดใหญ่ หาดใหญ่ สงขลา 90110	Online via WDS	Yes	Yes	7.003068	100.475653
+22705	U74217	WDS48970	ร้านเซเว่น สาขา ตลาดควนลัง	812481361	TRUE	AR611-LTE	GPON	สงขลา	เลขที่ - 7-ELEVEN รหัสสาขา 22705 ตลาดควนลัง - ควนลัง หาดใหญ่ สงขลา 90110	Online via WDS	Yes	No	6.99353	100.42309
+22798	U74330	WDS49471	ร้านเซเว่น สาขา ถนนราษฎร์ยินดี 30 เมตร หาดใหญ่	910104008	TRUE	AR611-LTE	GPON	สงขลา	เลขที่ - 7-11 รหัสสาขา 22798 ถ.ราษฎร์ยินดี 30 เมตร หาดใหญ่ - หาดใหญ่ หาดใหญ่ สงขลา 90110	Online via WDS	Yes	No	7.01719	100.48283
+22866	U74401	WDS49692	ร้านเซเว่น สาขา ถนนปุณกัณฑ์(คอหงส์)	917734751	TRUE	AR611-LTE	GPON	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 22866 ถนนปุณกัณฑ์(คอหงส์) - คอหงส์ หาดใหญ่ สงขลา 90110	Online	Yes	No/Online	7.0006	100.52352
+23067	U74624	WDS50203	ร้านเซเว่น สาขา นิพัทธ์สงเคราะห์ 1 ซอย 16	0612653588(A)	AIS	AR611-LTE	GPON	สงขลา	เลขที่ - โฉนด รหัสสาขา 23067 7-11นิพัทธ์สงเคราะห์ 1 ซอย 16 - คลองแห หาดใหญ่ สงขลา 90110	Online via WDS	Yes	No	7.02564	100.74012
+22918	U74423	WDS49742	ร้านเซเว่น สาขา ศรีภูวนารถตัดใหม่	938097060	TRUE	AR611-LTE	GPON	สงขลา	เลขที่ - 7-ELEVEN รหัสสาขา 22918 ศรีภูวนารถตัดใหม่ - ควนลัง หาดใหญ่ สงขลา 90110	Online via WDS	Yes	No	6.9982972	100.47749
+23142	U74694	WDS50503	ร้านเซเว่น สาขา บายพาสโคกเมา	0612670234(A)	AIS	AR611-LTE	GPON	สงขลา	เลขที่ - 7-11 รหัสสาขา 23142 บายพาสโคกเมา - ท่าช้าง บางกล่ำ สงขลา 90110	Online via WDS	Yes	No	7.025004	100.44106
+2120	U60780	WDS17313	ร้านเซเว่น สาขา ปตท.เทพา	952079519	TRUE	AR617VW-LTE	FIBER	สงขลา	เลขที่ 184 หมู่ 2 เทพา เทพา สงขลา 90150	Online via WDS	Yes	No/Online	6.8710676	100.95891
+14429	U94563	WDS26178	ร้านเซเว่น สาขา ค่ายรัตนพล(คลองหอยโข่ง)	953620417	TRUE	Cisco819	GPON	สงขลา	เลขที่ โฉนด คลองหอยโข่ง คลองหอยโข่ง สงขลา 90230	Online via WDS	No	Mobile Site down	6.87193	100.38118
+10279	U60790	WDS17329	ร้านเซเว่น สาขา ปตท.สะกอม2	0659517969(A)	AIS	One540	FIBER	สงขลา	เลขที่ 47/1 หมู่ 2 สะกอม เทพา สงขลา 90150	Online	Yes	No	6.938724	100.813894
+17714	U52298	WDS40497	ร้านเซเว่น สาขา ตำบลสะพานไม้แก่น	972076134	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ - 7-ELEVENรหัสสาขา 17714 ตำบลสะพานไม้แก่น - สะพานไม้แก่น จะนะ สงขลา 90130	Online via WDS	No	Mobile Site down	6.82291	100.78773
+11924	U21440	WDS26908	ร้านเซเว่น สาขา ปตท.นาทวีปิโตรเลี่ยม (Compact)	952705919	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 90 หมู่ที่ 8 ปตท.นาทวีปิโตรเลียม นาทวี นาทวี สงขลา 90160	Online via WDS	Yes	No	6.7209953	100.6955297
+17709	U52396	WDS40707	ร้านเซเว่น สาขา ตำบลทุ่งหมอ	972418637	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ - 7-11 รหัสสาขา 17709 ตำบลทุ่งหมอ - ทุ่งหมอ สะเดา สงขลา 90240	Online	Yes	No	6.74806	100.39287
+19873	U73629	WDS47500	ร้านเซเว่น สาขา ถนนทุ่งทอง(หาดใหญ่)	997962571	TRUE	AR611-LTE	GPON	สงขลา	เลขที่ - โฉนด รหัสสาขา 19873 ถนนทุ่งทอง(หาดใหญ่) - คลองแห หาดใหญ่ สงขลา 90110	Online via WDS	No	Mobile Site down	7.034159	100.463626
+19977	U73740	WDS47771	ร้านเซเว่น สาขา ถนนสาครมงคล	952057711	TRUE	AR611-LTE	GPON	สงขลา	เลขที่ - รหัสสาขา 19977 7-11 ถนนสาครมงคล - หาดใหญ่ หาดใหญ่ สงขลา 90110	Online via WDS	No	Mobile Site down	7.007651	100.453488
+18832	U72542	WDS44553	ร้านเซเว่น สาขา ถนนคึกฤทธิ์	640424046	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ - 7-ELEVEN รหัสสาขา 18832 ถนนคึกฤทธิ์ - คลองแห หาดใหญ่ สงขลา 90110	Online via WDS	Yes	Yes	7.026008	100.460845
+5950	U91590	WDS14580	ร้านเซเว่น สาขา ซอยสุภาพอ่อนหวาน	910289736	TRUE	One540	GPON	สงขลา	เลขที่ 564/3 ถ.กาญจนวณิชย์ หาดใหญ่ หาดใหญ่ สงขลา 90110	Online via WDS	Checking..		7.02809	100.501199
+9395	U88050	WDS14571	ร้านเซเว่น สาขา ลำไพล	0655076315(A)	AIS	One540	FIBER	สงขลา	เลขที่ 55/4 55/5 55/6 หมู่ 1 ลำไพล เทพา สงขลา 90150	Online	Checking..		6.738728	100.938944
+13559	U21443	WDS26911	ร้านเซเว่น สาขา ปตท.จะนะ 2	952702843	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 14/1 หมู่ที่ 1 ปตท.จะนะ2-หาดใหญ่ ปัตตานี บ้านนา จะนะ สงขลา 90130	Online	Checking..		6.916351	100.732089
+15185	U97013	WDS28876	ร้านเซเว่น สาขา สะบ้าย้อย-คูหา	0659363008(A)	AIS	Cisco819	GPON	สงขลา	เลขที่ - คูหา สะบ้าย้อย สงขลา 90210	Online via WDS	Checking..		6.6173739	100.9514164
+16566	U98790	WDS36826	ร้านเซเว่น สาขา วังใหญ่(เทพา)	858840109	TRUE	One540	GPON	สงขลา	เลขที่ - 7-ELEVEN รหัสสาขา16566 7-11 วังใหญ่(เทพา) - วังใหญ่ เทพา สงขลา 90260	Online	Checking..		6.739426	100.868519
+17046	U52002	WDS39435	ร้านเซเว่น สาขา ตำบลทับช้าง	971130190	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 17046 ตำบลทับช้าง - ทับช้าง นาทวี สงขลา 90160	Online via WDS	Checking..		6.5838831	100.6725558
+17208	U51527	WDS38519	ร้านเซเว่น สาขา PTTOR สะบ้าย้อย	0610215598(A)	AIS	Cisco1111-4PLTE	GPON	สงขลา	เลขที่ - 44204 รหัสสาขา 17208 PTTOR สะบ้าย้อย ลำไพร-สะบ้าย้อย 1 สะบ้าย้อย สะบ้าย้อย สงขลา 90210	Online	Checking..		6.620649	100.947465
+17360	U51753	WDS39083	ร้านเซเว่น สาขา ม.ราชภัฏสงขลา	966919967	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ - 7-ELEVEN รหัสสาขา 17360 ม.ราชภัฏสงขลา - เขารูปช้าง เมืองสงขลา สงขลา 90000	Online via WDS	Checking..		7.170065	100.613518
+18332	U53518	WDS42880	ร้านเซเว่น สาขา ตลาดน้ำคลองแห	910214854	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ - โฉนด รหัสสาขา 18332 ตลาดน้ำคลองแห - คลองแห หาดใหญ่ สงขลา 90110	Online via WDS	Checking..		7.042953	100.476103
+18468	U53693	WDS43345	ร้านเซเว่น สาขา PTTOR บ้านตรับ	973288061	TRUE	AR617VW-LTE	GPON	สงขลา	เลขที่ - 196 หมู่ 11 รหัสสาขา 18468 PTTOR บ้านตรับ - จะโหนง จะนะ สงขลา 90130	Online via WDS	Checking..		7.0117196	100.6688907
+18953	U69021	WDS45403	ร้านเซเว่น สาขา ถนนลำไพล-โคกโพธิ์	0610214650(A)	AIS	AR617VW-LTE	FIBER	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 18953 ถนนลำไพล-โคกโพธิ์ - ท่าม่วง เทพา สงขลา 90150	Online	Checking..		6.729902	100.992434
+22422	U61500	WDS48520	ร้านเซเว่น สาขา ถนนสงขลา-นวมินทร์(ขาเข้า)	0610214600(A)	AIS	AR611-LTE	FIBER	สงขลา	เลขที่ - 7-ELEVEN รหัสสาขา 22422 ถนนสงขลา-นวมินทร์(ขาเข้า) - เขารูปช้าง เมืองสงขลา สงขลา 90000	Online via WDS	Checking..		7.15971	100.59325
+22745	U74269	WDS49168	ร้านเซเว่น สาขา ถนนนวลแก้วอุทิศ 2	842173719	TRUE	AR611-LTE	GPON	สงขลา	เลขที่ - โฉนด รหัสสาขา 22745 7-11 ถนนนวลแก้วอุทิศ 2 - คอหงส์ หาดใหญ่ สงขลา 90110	Online	Checking..		7.0287	100.49752
+10969	U21433	WDS26901	ร้านเซเว่น สาขา ปตท.จินดากรุ๊ป	969631510	TRUE	Cisco819	GPON	สงขลา	เลขที่ - 47/16 หมู่ที่ 6 CP ALL (รหัสร้าน_10969) ปตท.จินดากรุ๊ป - น้ำน้อย หาดใหญ่ สงขลา 90110	Online via WDS			7.12038	100.544069
+9193	U61241	WDS17226	ร้านเซเว่น สาขา ปตท.ยะลา-หาดใหญ่กม.125	641807781	TRUE	Cisco819	FIBER	ยะลา	เลขที่ 2/10 หมู่ 4 ท่าสาป เมืองยะลา ยะลา 95000	Online	Checking..		6.560768	101.260485
+16302	U68783	WDS35930	ร้านเซเว่น สาขา PTTOR พีทีดี ยะลา (ขาเข้า)	0659363776(A)	AIS	One540	FIBER	ยะลา	เลขที่ - 2/14 หมู่ 4 PTTOR พีทีดี ยะลา (ขาเข้า) รหัสสาขา 16302 - ท่าสาป เมืองยะลา ยะลา 95000	Online	Checking..		6.5634269	101.2614356
+19900	U73692	WDS47620	ร้านเซเว่น สาขา PTTOR สะเตงนอก (เมืองยะลา)	889805225	TRUE	AR611-LTE	GPON	ยะลา	เลขที่ - 243/34 หมู่ 12 รหัสสาขา 19900 PTTOR สะเตงนอก (เมืองยะลา) - สะเตงนอก เมืองยะลา ยะลา 95000	Online via WDS	Checking..		6.535996	101.2976344
+2598	U88006	WDS14584	ร้านเซเว่น สาขา สตูล2	910289740	TRUE	One540	FIBER	สตูล	เลขที่ 71/2 ถ.ศุลกานุกูล พิมาน เมืองสตูล สตูล 91000	Online	Checking..		6.608913	100.064328
+8631	U88031	WDS14588	ร้านเซเว่น สาขา คลองขุด	0659512937(A)	AIS	One540	FIBER	สตูล	508 หมู่ที่ 7 คลองขุด เมืองสตูล สตูล 91000	Online	Checking..		6.640131	100.072442
+14459	U20127	WDS26199	ร้านเซเว่น สาขา ถนนปานชูรำลึก	951601468	TRUE	Cisco819	GPON	สตูล	เลขที่ - โฉนดที่560 CP ALL (รหัสร้าน_14459) สาขาถนนปานชูรำลึก - ปานชูรำลึก พิมาน เมืองสตูล สตูล 91000	Online via WDS	Checking..		6.623451	100.068625
+19035	U72786	WDS45640	ร้านเซเว่น สาขา ศุลกานุกูล ซอย 9	964759828	TRUE	AR611-LTE	GPON	สตูล	เลขที่ - โฉนด รหัสสาขา 19035 ศุลกานุกูล ซอย 9 - พิมาน เมืองสตูล สตูล 91000	Online	Checking..		6.6039	100.063993
+9343	U19515	WDS25589	ร้านเซเว่น สาขา ปตท.ภคภูมิ (หนองจิก)	640031649	TRUE	Cisco819	FIBER	ปัตตานี	เลขที่ - 180/5 หมู่ 9 CP ALL (รหัสร้าน_9343) ปตท.ภคภูมิ (หนองจิก) 9343 - บ่อทอง หนองจิก ปัตตานี 94170	Online			6.803845	101.14316
+18710	U72454	WDS44113	ร้านเซเว่น สาขา ตะลุโบะ	640525305	TRUE	AR617VW-LTE	GPON	ปัตตานี	เลขที่ - 30/13 30/14 รหัสสาขา 18710 ตะลุโบะ - ตะลุโบะ เมืองปัตตานี ปัตตานี 94000	Online via WDS			6.85027	101.256048
+8689	U91800	WDS14559	ร้านเซเว่น สาขา ตลาดสดสะเดา	640011073	TRUE	One540	GPON	สงขลา	เลขที่ 54 56 58 ถ.รวมใจ สะเดา สะเดา สงขลา 90120	Online via Wireline	Checking..		6.63441	100.420854
+15183	U66306	WDS28908	ร้านเซเว่น สาขา บ้านขุนทองนาทับ	0982540986(A)	AIS	Cisco819	FIBER	สงขลา	เลขที่ - จะโหนง จะนะ สงขลา 90130	Online			7.0427812	100.656333
+5518	U19364	WDS25558	ร้านเซเว่น สาขา สินอุทิศ	917732187	TRUE	One540	GPON	ยะลา	เลขที่ - 43/1 สินอุทิศ เทศบาล1 สะเตง เมืองยะลา ยะลา 95000	Online	Yes	No	6.54917	101.27467`;
+
+    // --- 2. PARSER FUNCTION (แปลง TSV เป็น Object) ---
+    function parseTsv(tsv) {
+        const lines = tsv.trim().split('\n');
+        // บรรทัดแรกคือ Header
+        const headers = lines[0].split('\t').map(h => h.trim());
         
-        // --- 1. DATA & CONFIGURATION ---
-        const tsvData = `ID_Shop	Store_Name	SIM	Province	Address	Risk	Status
-19222	ร้านเซเว่น สาขา ห้วยโอน	TRUE	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 19222 ห้วยโอน - กำแพงเพชร รัตภูมิ สงขลา 90180	ปานกลาง	No/Online
-622	ร้านเซเว่น สาขา ศุภสารรังสรรค์	TRUE	สงขลา	เลขที่ - 176 CP ALL (รหัสร้าน_622) ศุภสารรังสรรค์ - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Yes
-6457	ร้านเซเว่น สาขา เตชาโต	TRUE	สงขลา	เลขที่ 351 351/1 ถ.ธรรมนูญวิถี หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-6522	ร้านเซเว่น สาขา ปตท.คอหงส์	TRUE	สงขลา	เลขที่ 2/9 หมู่ 5 ถ.กาญจนวานิช คอหงส์ หาดใหญ่ สงขลา 90110	สูง	Yes
-12185	ร้านเซเว่น สาขา ม.หาดใหญ่	TRUE	สงขลา	เลขที่ - 7-11 CP ALL (รหัสร้าน_12185) ม.หาดใหญ่ - คอหงส์ หาดใหญ่ สงขลา 90110	สูง	Yes
-16406	ร้านเซเว่น สาขา จันทร์วิโรจน์	TRUE	สงขลา	เลขที่ - โฉนด รหัสสาขา 16406 สาขาจันทร์วิโรจน์ - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Yes
-10089	ร้านเซเว่น สาขา ถนนปุณกัณฑ์	TRUE	สงขลา	เลขที่ - 41/6 หมู่ที่ 6 CP ALL (รหัสร้าน_10089) ถนนปุณณกัณฑ์ คอหงส์ หาดใหญ่ สงขลา 90110	สูง	No
-15328	ร้านเซเว่น สาขา ถนนทุ่งรี	TRUE	สงขลา	เลขที่ - คอหงส์ หาดใหญ่ สงขลา 90110	สูง	No
-13110	ร้านเซเว่น สาขา ถนนนิพัทธ์ภักดี	TRUE	สงขลา	เลขที่ - 7-11 CP ALL (รหัสร้าน_13110) ถนนนิพัทธ์ภักดี - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Yes
-16894	ร้านเซเว่น สาขา ร้าน เบลลินี่ เบคแอนด์บรู ถนน ปุณณกัณฑ์	TRUE	สงขลา	เลขที่ - 99/40 รหัสสาขา 16894 7-11 เบลลินี่ เบคแอนด์บรู ปุณณกัณฑ์ คอหงส์ หาดใหญ่ สงขลา 90110	สูง	No
-15827	ถนนทุ่งรี-โคกวัด	TRUE	สงขลา	เลขที่ - 47/4 รหัสสาขา 15827 ถนนทุ่งรี-โคกวัด 47/4 คอหงส์ หาดใหญ่ สงขลา 90110	สูง	No
-9051	ร้านเซเว่น สาขา หน้าหอประชุมมอ.	TRUE	สงขลา	43/199 หมู่ที่ 6 คอหงส์ หาดใหญ่ สงขลา 90000	สูง	No
-594	ร้านเซเว่น สาขา ทุ่งเสา	TRUE	สงขลา	เลขที่ - 88,90 CP ALL (รหัสร้าน_594) ทุ่งเสา คอหงส์ หาดใหญ่ สงขลา 90110	สูง	Yes
-6094	ร้านเซเว่น สาขา ปตท.ท่าช้าง(บางกล่ำ)	TRUE	สงขลา	เลขที่ 189/18 หมู่ 5 ท่าช้าง บางกล่ำ สงขลา 90110	สูง	No
-13392	ร้านเซเว่น สาขา บ้านหนองข้อง	AIS	สงขลา	เลขที่ - บ้านหนองข้อง กำแพงเพชร รัตภูมิ สงขลา 90180	สูง	No
-13965	ร้านเซเว่น สาขา ปตท.สิริพัฒน์(ท่าช้าง)	AIS	สงขลา	ร้าน 7-11 รหัสสาขา 13965 สาขาปตท.สิริพัฒน์ ร้าน 7-11 ท่าช้าง บางกล่ำ สงขลา 90110	สูง	No
-8547	ร้านเซเว่น สาขา ปุณกันฑ์3	TRUE	สงขลา	เลขที่ 99/40 หมู่ 3 คอหงส์ หาดใหญ่ สงขลา 90110	สูง	No
-18052	ร้านเซเว่น สาขา ถนนสายเอเชีย 43	AIS	สงขลา	เลขที่ - รหัสสาขา 18052 7-11 ถนนสายเอเชีย 43 - ท่าช้าง บางกล่ำ สงขลา 90110	สูง	No
-8255	ร้านเซเว่น สาขา ทุ่งเสา 2	TRUE	สงขลา	เลขที่ - 51,53,55 CP ALL (รหัสร้าน_8255) ทุ่งเสา2 - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Yes
-871	ร้านเซเว่น สาขา เสน่หานุสรณ์	TRUE	สงขลา	เลขที่ - 26/2-7 CP ALL (รหัสร้าน_871) เสน่หานุสรณ์ - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Yes
-587	ร้านเซเว่น สาขา ตลาดกิมหยง	TRUE	สงขลา	เลขที่ - 36/1-2 CP ALL (รหัสร้าน_587) ตลาดกิมหยง - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Yes
-18505	ร้านเซเว่น สาขา สวนหย่อมศุภสารรังสรรค์	TRUE	สงขลา	เลขที่ - 7-11 รหัสสาขา 18505 สวนหย่อมศุภสารรังสรรค์ - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Yes
-8983	ร้านเซเว่น สาขา ศุภสารรังสรรค์ 2	TRUE	สงขลา	เลขที่ - 163 CP ALL (รหัสร้าน_8983) ศุภสารรังสรรค์2 หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Yes
-961	ร้านเซเว่น สาขา ราษฎร์อุทิศ	TRUE	สงขลา	เลขที่ - 104 CP ALL (รหัสร้าน_961) ราษฎร์อุทิศ ราษฎร์อุทิศ หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Yes
-6737	ร้านเซเว่น สาขา นิพัทธ์อุทิศ 3	TRUE	สงขลา	เลขที่ - 118-120 CP ALL (รหัสร้าน_6737) นิพัทธ์อุทิศ นิพัทธ์อุทิศ3 หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Yes
-3560	ร้านเซเว่น สาขา ละม้ายสงเคราะห์	TRUE	สงขลา	เลขที่ 21/10 ถ.หอยมุกต์ หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Yes
-9566	ร้านเซเว่น สาขา สามแยกโตนงาช้าง	AIS	สงขลา	15/2 15/3 15/11 หมู่3 ทุ่งตำเสา หาดใหญ่ สงขลา 90110	สูง	No
-591	ร้านเซเว่น สาขา หน้าร.พ.หาดใหญ่	TRUE	สงขลา	เลขที่ 188/19-20 ถ.รัถการ หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Yes
-11985	ร้านเซเว่น สาขา บ้านสามบ่อ	TRUE	สงขลา	เลขที่ - 70 หมู่ที่ 3 บ้านสามบ่อ ระวะ ระโนด สงขลา 90140	ปานกลาง	No/Online
-589	ร้านเซเว่น สาขา ซีกิมหยง	TRUE	สงขลา	เลขที่ 7 8 ถ.ฉัยยากุลอุทิศ หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-13391	ร้านเซเว่น สาขา ถนนเสน่หานุสรณ์	TRUE	สงขลา	เลขที่ - 59/4 CP ALL (รหัสร้าน_13391) ถนนเสน่หานุสรณ์ เสน่หานุสรณ์ หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-17192	ร้านเซเว่น สาขา PTTOR ราษฎร์อุทิศ (หาดใหญ่)	TRUE	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 17192 PTTOR ราษฎร์อุทิศ (หาดใหญ่) - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-13089	ร้านเซเว่น สาขา ปตท.ถนนหาดใหญ่-รัตภูมิ	TRUE	สงขลา	เลขที่ - 1199 หมู่ 4 CP ALL (รหัสร้าน_13089) ปตท.ถนนหาดใหญ่-รัตภูมิ (RS) เพชรเกษม ควนลัง หาดใหญ่ สงขลา 90110	สูง	No
-15932	ร้านเซเว่น สาขา ตำบลควนลัง	TRUE	สงขลา	เลขที่ - รหัสสาขา 15932 7-11 ควนลัง เพชรเกษม ควนลัง หาดใหญ่ สงขลา 90110	สูง	No
-16129	ร้านเซเว่น สาขา ถนนสามชัย ซ.1	TRUE	สงขลา	เลขที่ - SHOP ID:16129 สาขา ถนนสามชัย ซ.1 - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-22705	ร้านเซเว่น สาขา ตลาดควนลัง	TRUE	สงขลา	เลขที่ - 7-ELEVEN รหัสสาขา 22705 ตลาดควนลัง - ควนลัง หาดใหญ่ สงขลา 90110	สูง	No
-13393	ร้านเซเว่น สาขา ถนนราษฎร์ยินดี ซอย 9	TRUE	สงขลา	เลขที่ - ถนนราษฎร์ยินดี ซอย9 ราษฎร์ยินดี ราษฎร์ยินดี 9 หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-14486	ร้านเซเว่น สาขา จุติอนุสรณ์(14486)	TRUE	สงขลา	เลขที่ 108 ถนนจุติอนุสรณ์ หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-14871	ร้านเซเว่น สาขา เพชรเกษม(เทศบาลหาดใหญ่)	TRUE	สงขลา	เลขที่ - 430/2-4 ถนนเพชรเกษม หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-10831	ร้านเซเว่น สาขา ประกายทอง	TRUE	สงขลา	เลขที่ - ร้าน 7-11 ประกายทอง ควนลัง หาดใหญ่ สงขลา 90110	สูง	Yes
-4588	ร้านเซเว่น สาขา เพชรเกษมซอย19	TRUE	สงขลา	เลขที่ 488/4 ถ.เพชรเกษม หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-16630	ร้านเซเว่น สาขา บางแฟบพัฒนา	TRUE	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 16630 สาขาบางแฟบพัฒนา - ควนลัง หาดใหญ่ สงขลา 90110	สูง	No
-8369	ร้านเซเว่น สาขา พรุฉิมพลี	TRUE	สงขลา	17/1 หมู่ที่ 1 ถ.บ้านหน้าควนลัง - บ้านพรุ ควนลัง หาดใหญ่ สงขลา 90110	สูง	Yes
-16580	ร้านเซเว่น สาขา ถนนบ้านบางนา(บางแฟบ)	TRUE	สงขลา	เลขที่ - โฉนด รหัสสาขา 16580 สาขาบ้านบางนา(บางแฟบ) - ควนลัง หาดใหญ่ สงขลา 90110	สูง	No
-14305	ร้านเซเว่น สาขา ถนนคลองเรียน2	TRUE	สงขลา	เลขที่ 37/2 ถนนคลองเรียน2 หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-22798	ร้านเซเว่น สาขา ถนนราษฎร์ยินดี 30 เมตร หาดใหญ่	TRUE	สงขลา	เลขที่ - 7-11 รหัสสาขา 22798 ถ.ราษฎร์ยินดี 30 เมตร หาดใหญ่ - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-16856	ร้านเซเว่น สาขา เทศาพัฒนา	TRUE	สงขลา	เลขที่ - รหัสสาขา 16856 7-11 เทศาพัฒนา - ควนลัง หาดใหญ่ สงขลา 90110	สูง	No
-10176	ร้านเซเว่น สาขา ทุ่งเสา 2 ซอย 10	TRUE	สงขลา	เลขที่ - 53,55,57,59 CP ALL (รหัสร้าน_10176) ทุ่งเสา2ซอย10 - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-22866	ร้านเซเว่น สาขา ถนนปุณกัณฑ์(คอหงส์)	TRUE	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 22866 ถนนปุณกัณฑ์(คอหงส์) - คอหงส์ หาดใหญ่ สงขลา 90110	ปานกลาง	No/Online
-6303	ร้านเซเว่น สาขา ถนนสามชัย	TRUE	สงขลา	เลขที่ - 248 CP ALL (รหัสร้าน_6303) ถนนสามชัย - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-943	ร้านเซเว่น สาขา ตลาดใหม่	TRUE	สงขลา	เลขที่ 43-45 ถ.ต้นรัตนากร หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-17047	ร้านเซเว่น สาขา รัตนอุทิศ ซ.18	AIS	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 17047 รัตนอุทิศ ซ.18 - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-11112	ร้านเซเว่น สาขา ถนนปุณกัณฑ์ซอย12	TRUE	สงขลา	เลขที่ - ถนนปุณกัณฑ์ซอย12 ปุณกันณฑ์ซ.12 คอหงส์ หาดใหญ่ สงขลา 90110	ปานกลาง	No/Online
-748	ร้านเซเว่น สาขา โชคสมานกุล	TRUE	สงขลา	เลขที่ 62 ถ.โชคสมาน 1 หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-985	ร้านเซเว่น สาขา หรรษา	TRUE	สงขลา	เลขที่ - 319 CP ALL (รหัสร้าน_985) หรรษา - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-13015	ร้านเซเว่น สาขา ถนนทวีรัตน์	TRUE	สงขลา	เลขที่ - ถนนทวีรัตน์ ทวีรัตน์ คอหงส์ หาดใหญ่ สงขลา 90110	ปานกลาง	No/Online
-7811	ร้านเซเว่น สาขา คลองหอยโข่ง	TRUE	สงขลา	เลขที่ 196 197 หมู่ 7 ทุ่งลาน คลองหอยโข่ง สงขลา 90230	สูง	No
-8321	ร้านเซเว่น สาขา รัตนอุทิศซอย11	TRUE	สงขลา	เลขที่ 105 107 ถ.รัตนอุทิศ หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-16478	ร้านเซเว่น สาขา สนามกีฬาจิระนคร	TRUE	สงขลา	เลขที่ - โฉนด รหัสสาขา 16478 สนามกีฬาจิระนคร - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-13537	ร้านเซเว่น สาขา สี่แยกสนามบินนอก	TRUE	สงขลา	เลขที่ - 1560 CP ALL (รหัสร้าน_13537) สี่แยกสนามบินนอก - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-14226	ร้านเซเว่น สาขา คลองเปี๊ยะ	AIS	สงขลา	เลขที่ - จะโหนง จะนะ สงขลา 90130	ปานกลาง	No/Online
-5963	ร้านเซเว่น สาขา นิพัทธ์สงเคราะห์2	TRUE	สงขลา	เลขที่ 264/1-2 ถ.นิพัทธ์สงเคราะห์ 2 หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-10234	ร้านเซเว่น สาขา เพชรเกษม ซอย 41	TRUE	สงขลา	เลขที่ - 1347/1 CP ALL (รหัสร้าน_10234) เพชรเกษมซอย41 - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-10689	ร้านเซเว่น สาขา ถนนรัถการ	TRUE	สงขลา	เลขที่ - 430/1 CP ALL (รหัสร้าน_10689) ถนนรัถการ - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-9877	ร้านเซเว่น สาขา ปตท.บ้านในเมือง(จะนะ)	TRUE	สงขลา	เลขที่ 23/1 หมู่ 5 คลองเปียะ จะนะ สงขลา 90130	สูง	No
-7001	ร้านเซเว่น สาขา ซอยทวีวรรณ	TRUE	สงขลา	เลขที่ 147 149 ถ.กาญจนวณิชย์ หาดใหญ่ หาดใหญ่ สงขลา 90110	ปานกลาง	No/Online
-12163	ร้านเซเว่น สาขา ตลาดยรรยงค์	TRUE	สงขลา	เลขที่ - 70 หมู่ที่ 3 สาขาตลาดยรรยงค์ ระโนด-สงขลา ระวะ ระโนด สงขลา 90140	สูง	Yes
-10451	ร้านเซเว่น สาขา รัตนอุทิศ ซ.13	TRUE	สงขลา	เลขที่ - 129131133 CP ALL (รหัสร้าน_10451) รัตนอุทิศซ.13 - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Yes
-11232	ร้านเซเว่น สาขา ซอยไปดีมาดี	TRUE	สงขลา	เลขที่ - 18 CP ALL (รหัสร้าน_11232) ซอยไปดีมาดี อนุสรณ์อาจารย์ทอง หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-15484	ร้านเซเว่น สาขา PTTORหาดใหญ่ใน(ขาออก)	TRUE	สงขลา	เลขที่ - 1121/1 ถนนเพชรเกษม หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-23067	ร้านเซเว่น สาขา นิพัทธ์สงเคราะห์ 1 ซอย 16	AIS	สงขลา	เลขที่ - โฉนด รหัสสาขา 23067 7-11นิพัทธ์สงเคราะห์ 1 ซอย 16 - คลองแห หาดใหญ่ สงขลา 90110	สูง	No
-22918	ร้านเซเว่น สาขา ศรีภูวนารถตัดใหม่	TRUE	สงขลา	เลขที่ - 7-ELEVEN รหัสสาขา 22918 ศรีภูวนารถตัดใหม่ - ควนลัง หาดใหญ่ สงขลา 90110	สูง	No
-2892	ร้านเซเว่น สาขา บขส.หาดใหญ่	TRUE	สงขลา	เลขที่ - 143 CP ALL (รหัสร้าน_2892) บขส.หาดใหญ่ - หาดใหญ่ หาดใหญ่ สงขลา 90110	ปานกลาง	No/Online
-9828	ร้านเซเว่น สาขา ซ.20 รัตนอุทิศ	TRUE	สงขลา	เลขที่ - 744 CP ALL (รหัสร้าน_9828) ซ.20รัตนอุทิศ - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	No
-10305	ร้านเซเว่น สาขา ศรีภูวนาถใน	TRUE	สงขลา	เลขที่ - 15 หมู่ 1 CP ALL (รหัสร้าน_10305) ศรีภูวนาถใน - ควนลัง หาดใหญ่ สงขลา 90110	สูง	No
-13699	ร้านเซเว่น สาขา บ้านท่าเคียน	TRUE	สงขลา	โฉนด รหัสสาขา 13699 7-11 สาขา บ้านท่าเคียน - ควนลัง หาดใหญ่ สงขลา 90110	สูง	No
-11680	ร้านเซเว่น สาขา ราษฎร์อุทิศเขต8	TRUE	สงขลา	เลขที่ - 548 ราษฎร์อุทิศ 8 ราษฎร์อุทิศ หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Yes
-8566	ร้านเซเว่น สาขา พลพิชัย	TRUE	สงขลา	เลขที่ 117 119 121 123 ถ.พลพิชัย หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Yes
-16479	ร้านเซเว่น สาขา ถนนสมบูรณ์ 2	TRUE	สงขลา	เลขที่ - 7-ELEVEN รหัสสาขา 16479 7-11 ถนนสมบูรณ์ 2 - ควนลัง หาดใหญ่ สงขลา 90110	สูง	No
-4528	ร้านเซเว่น สาขา ปตท.คลองหวะ	TRUE	สงขลา	เลขที่ 25/2 หมู่ 1 ถ.เลี่ยงเมือง (สายเอเชีย) ควนลัง หาดใหญ่ สงขลา 90110	สูง	No
-23142	ร้านเซเว่น สาขา บายพาสโคกเมา	AIS	สงขลา	เลขที่ - 7-11 รหัสสาขา 23142 บายพาสโคกเมา - ท่าช้าง บางกล่ำ สงขลา 90110	สูง	No
-8398	ร้านเซเว่น สาขา ทุ่งลุง 3	TRUE	สงขลา	เลขที่ - 360/1 CP ALL (รหัสร้าน_8398) ทุ่งลุง3 - พะตง หาดใหญ่ สงขลา 90230	สูง	Yes
-807	ร้านเซเว่น สาขา ทุ่งลุง	TRUE	สงขลา	เลขที่ - 119/1 หมู่ 1 CP ALL (รหัสร้าน_807) ทุ่งลุง(หาดใหญ่) - พะตง หาดใหญ่ สงขลา 90230	สูง	No
-17553	ร้านเซเว่น สาขา ถนนท่าโพธิ์	TRUE	สงขลา	เลขที่ - 7-11 รหัสสาขา 17553 ถนนท่าโพธิ์ - พังลา สะเดา สงขลา 90170	สูง	No
-13203	ร้านเซเว่น สาขา ปตท.นาทวี-คลองแงะ	TRUE	สงขลา	เลขที่ - 34/4 หมู่ที่ 4 ปตท.นาทวีคลองแงะ นาทวี นาทวี สงขลา 90160	สูง	Yes
-11677	ร้านเซเว่น สาขา ถนนวิเชียรชม	TRUE	สงขลา	เลขที่ - 43-43/1-7 CP ALL (รหัสร้าน_11677) ถนนวิเชียรชม(RS) - บ่อยาง เมืองสงขลา สงขลา 90000	ปานกลาง	No/Online
-18648	ร้านเซเว่น สาขา กาญจนวนิช (ทุ่งลุง)	TRUE	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 18648 กาญจนวนิช (ทุ่งลุง) - พะตง หาดใหญ่ สงขลา 90230	สูง	No
-2120	ร้านเซเว่น สาขา ปตท.เทพา	TRUE	สงขลา	เลขที่ 184 หมู่ 2 เทพา เทพา สงขลา 90150	ปานกลาง	No/Online
-5290	ร้านเซเว่น สาขา ตลาดคลองหอยโข่ง	AIS	สงขลา	เลขที่ 300 หมู่ 2 คลองหอยโข่ง คลองหอยโข่ง สงขลา 90230	สูง	No
-14429	ร้านเซเว่น สาขา ค่ายรัตนพล(คลองหอยโข่ง)	TRUE	สงขลา	เลขที่ โฉนด คลองหอยโข่ง คลองหอยโข่ง สงขลา 90230	สูง	Mobile Site down
-9390	ร้านเซเว่น สาขา อำเภอเทพา	TRUE	สงขลา	30 ถ.เกษตรขันธ์ เทพา เทพา สงขลา 90150	สูง	Yes
-10279	ร้านเซเว่น สาขา ปตท.สะกอม2	AIS	สงขลา	เลขที่ 47/1 หมู่ 2 สะกอม เทพา สงขลา 90150	สูง	No
-7164	ร้านเซเว่น สาขา ปตท.นาทวีออยล์	TRUE	สงขลา	เลขที่ - 81/1 หมู่ที่ 5 ปตท.นาทวีออยส์ ฉาง นาทวี สงขลา 90160	สูง	No
-17714	ร้านเซเว่น สาขา ตำบลสะพานไม้แก่น	TRUE	สงขลา	เลขที่ - 7-ELEVENรหัสสาขา 17714 ตำบลสะพานไม้แก่น - สะพานไม้แก่น จะนะ สงขลา 90130	สูง	Mobile Site down
-8705	ร้านเซเว่น สาขา นาทวี2	TRUE	สงขลา	59/6 หมู่ 1 ถนนเพชรเกษม นาทวี นาทวี สงขลา 90160	สูง	Yes
-11924	ร้านเซเว่น สาขา ปตท.นาทวีปิโตรเลี่ยม (Compact)	TRUE	สงขลา	เลขที่ - 90 หมู่ที่ 8 ปตท.นาทวีปิโตรเลียม นาทวี นาทวี สงขลา 90160	สูง	No
-14111	ร้านเซเว่น สาขา นาทวี-ด่านประกอบ	AIS	สงขลา	เลขที่ ( ยังไม่มีเลขที่บ้าน ) นาทวี นาทวี สงขลา 90160	สูง	No
-13671	ร้านเซเว่น สาขา พิชัยสงคราม (สะเดา)	AIS	สงขลา	เลขที่ - 39/4 พิชัยสงคราม สะเดา สะเดา สงขลา 90120	สูง	No
-13702	ร้านเซเว่น สาขา ปตท.ถนนกองบิน56-คลองหอยโข่ง	AIS	สงขลา	เลขที่ - 27/2 หมู่ที่ 8 ปตท.ถนนกองบิน 56 คลองหอยโข่ง โคกม่วง คลองหอยโข่ง สงขลา 90110	สูง	Mobile Site down
-9394	ร้านเซเว่น สาขา บ้านสะท้อน	AIS	สงขลา	เลขที่ 1/7 1/8 หมู่1 สะท้อน นาทวี สงขลา 90160	สูง	No
-17709	ร้านเซเว่น สาขา ตำบลทุ่งหมอ	TRUE	สงขลา	เลขที่ - 7-11 รหัสสาขา 17709 ตำบลทุ่งหมอ - ทุ่งหมอ สะเดา สงขลา 90240	สูง	No
-11735	ร้านเซเว่น สาขา ถนนบ้านพรุธานี	TRUE	สงขลา	เลขที่ - 53/5-7 CP ALL (รหัสร้าน_11735) ถนนบ้านพรุธานี - บ้านพรุ หาดใหญ่ สงขลา 90250	สูง	No
-19873	ร้านเซเว่น สาขา ถนนทุ่งทอง(หาดใหญ่)	TRUE	สงขลา	เลขที่ - โฉนด รหัสสาขา 19873 ถนนทุ่งทอง(หาดใหญ่) - คลองแห หาดใหญ่ สงขลา 90110	สูง	Mobile Site down
-19977	ร้านเซเว่น สาขา ถนนสาครมงคล	TRUE	สงขลา	เลขที่ - รหัสสาขา 19977 7-11 ถนนสาครมงคล - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Mobile Site down
-18832	ร้านเซเว่น สาขา ถนนคึกฤทธิ์	TRUE	สงขลา	เลขที่ - 7-ELEVEN รหัสสาขา 18832 ถนนคึกฤทธิ์ - คลองแห หาดใหญ่ สงขลา 90110	สูง	Yes
-18896	ร้านเซเว่น สาขา นิพัทธ์สงเคราะห์ 5 (หาดใหญ่)	TRUE	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 18896 นิพัทธ์สงเคราะห์ 5 (หาดใหญ่) - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Yes
-17382	ร้านเซเว่น สาขา หมู่บ้านนครินทร์ธานี	TRUE	สงขลา	เลขที่ - 7-ELEVEN รหัสสาขา 17382 หมู่บ้านนครินทร์ธานี - ควนลัง หาดใหญ่ สงขลา 90110	สูง	Mobile Site down
-11451	ร้านเซเว่น สาขา ถนนทุ่งใหญ่ (หาดใหญ่)	TRUE	สงขลา	เลขที่ - ถนนทุ่งใหญ่ ทุ่งใหญ่ คลองแห หาดใหญ่ สงขลา 90110	สูง	No
-15182	ร้านเซเว่น สาขา ตำบลคูเต่า	AIS	สงขลา	เลขที่ - คูเต่า หาดใหญ่ สงขลา 90110	สูง	Mobile Site down
-1097	ร้านเซเว่น สาขา นิพัทธ์สงเคราะห์1	TRUE	สงขลา	เลขที่ 41/185 ถ.นิพัทธ์สงเคราะห์ 1 หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Mobile Site down
-9794	ร้านเซเว่น สาขา เพชรเกษม ซ.30	TRUE	สงขลา	เลขที่ - 1122/2 CP ALL (รหัสร้าน_9794) เพชรเกษมซ.30 - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Checking..
-16275	ร้านเซเว่น สาขา ปากบาง(สะกอม)	TRUE	สงขลา	เลขที่ - โฉนด รหัสสาขา16275 สาขาปากบาง(สะกอม) - สะกอม เทพา สงขลา 90150	สูง	No
-8544	ร้านเซเว่น สาขา ร.พ.กรุงเทพหาดใหญ่	TRUE	สงขลา	เลขที่ - 75 CP ALL (รหัสร้าน_8544) รพ.กรุงเทพ-หาดใหญ่ - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Checking..
-15107	ร้านเซเว่น สาขา ตลาดปิ่นทองบ้านพรุ	TRUE	สงขลา	เลขที่ - โฉนด บ้านพรุ หาดใหญ่ สงขลา 90250	สูง	Checking..
-14563	ร้านเซเว่น สาขา เพชรเกษมซอย45	TRUE	สงขลา	เลขที่ โฉนด หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Checking..
-1213	ร้านเซเว่น สาขา ราษฏร์ยินดี	TRUE	สงขลา	เลขที่ 359 ถ.ศุภสารรังสรรค์ หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Checking..
-8988	ร้านเซเว่น สาขา จะนะ2	TRUE	สงขลา	เลขที่ 8 หมู่ 2ถ.จะนะ - นาทวี บ้านนา จะนะ สงขลา 90130	สูง	No
-2132	ร้านเซเว่น สาขา เทคนิคหาดใหญ่	TRUE	สงขลา	472 474 ถ.กาญจนวานิชย์ หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Checking..
-2441	ร้านเซเว่น สาขา จะนะ	TRUE	สงขลา	เลขที่ - 76_78 หมู่ที่ 2 จะนะ-บ้านนา จะนะ สงขลา 90130	สูง	Checking..
-3049	ร้านเซเว่น สาขา คลองเตยหาดใหญ่	TRUE	สงขลา	15/77 หมู่ 1 คอหงส์ หาดใหญ่ สงขลา 90110	สูง	Checking..
-5436	ร้านเซเว่น สาขา ตลาดคลองแงะ	TRUE	สงขลา	เลขที่ - 41/1 หมู่ 5 CP ALL (รหัสร้าน_5436) ตลาดคลองแงะ คลองแงะ-นาทวี พังลา สะเดา สงขลา 90120	สูง	Checking..
-5950	ร้านเซเว่น สาขา ซอยสุภาพอ่อนหวาน	TRUE	สงขลา	เลขที่ 564/3 ถ.กาญจนวณิชย์ หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Checking..
-6133	ร้านเซเว่น สาขา อาเซี่ยนพลาซ่า	TRUE	สงขลา	เลขที่ 1468/1 1468/2 ถ.กาญจนวณิชย์ หาดใหญ่ หาดใหญ่ สงขลา 90110	ปานกลาง	Checking..
-6335	ร้านเซเว่น สาขา หน้า ร.พ.ค่ายเสนาณรงค์	TRUE	สงขลา	เลขที่ - 730 CP ALL (รหัสร้าน_6335) หน้าร.พ.ค่ายเสนาณรงค์ - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Checking..
-6368	ร้านเซเว่น สาขา ถนนสนามบินหาดใหญ่	TRUE	สงขลา	เลขที่ - 1728 หมู่ 3 CP ALL (รหัสร้าน_6368) ถนนสนามบินหาดใหญ่ - ควนลัง หาดใหญ่ สงขลา 90110	สูง	Checking..
-7166	ร้านเซเว่น สาขา ปตท.คลองแห	TRUE	สงขลา	เลขที่ 89/13 หมู่ 11 คลองแห หาดใหญ่ สงขลา 90110	สูง	Checking..
-8510	ร้านเซเว่น สาขา ควนเนียง	AIS	สงขลา	เลขที่ 103/11 รัตภูมิ ควนเนียง สงขลา 90220	สูง	Checking..
-8689	ร้านเซเว่น สาขา ตลาดสดสะเดา	TRUE	สงขลา	เลขที่ 54 56 58 ถ.รวมใจ สะเดา สะเดา สงขลา 90120	สูง	Checking..
-8874	ร้านเซเว่น สาขา ตลาดคลองเตย(หาดใหญ่)	TRUE	สงขลา	185/68-69 หมู่ที่ 1 คอหงส์ หาดใหญ่ สงขลา 90110	สูง	Checking..
-9332	ร้านเซเว่น สาขา บ้านปริก	TRUE	สงขลา	เลขที่ - 95,97 CP ALL (รหัสร้าน_9332) บ้านปริก กาญจนวนิช3 ปริก สะเดา สงขลา 90120	สูง	Checking..
-9393	ร้านเซเว่น สาขา คลองแห	AIS	สงขลา	58/8 หมู่ 4 คลองแห หาดใหญ่ สงขลา 90110	สูง	Checking..
-9395	ร้านเซเว่น สาขา ลำไพล	AIS	สงขลา	เลขที่ 55/4 55/5 55/6 หมู่ 1 ลำไพล เทพา สงขลา 90150	สูง	Checking..
-9578	ร้านเซเว่น สาขา นาสีทอง	AIS	สงขลา	เลขที่ 15/7 หมู่ 1 เขาพระ รัตภูมิ สงขลา 90180	สูง	Checking..
-9749	ร้านเซเว่น สาขา ภาษีเจริญบ้านพรุ	TRUE	สงขลา	เลขที่ 43 ถ.สราญราษฏร์ บ้านพรุ หาดใหญ่ สงขลา 90110	สูง	Checking..
-11045	ร้านเซเว่น สาขา พรุฉิมพลี ซอย 1	TRUE	สงขลา	เลขที่ - พรุฉิมพลี ซอย 1 ควนลัง หาดใหญ่ สงขลา 90110	สูง	Checking..
-11288	ร้านเซเว่น สาขา ถนนอัมพวัน (หาดใหญ่)	TRUE	สงขลา	เลขที่ - 95/7 หมู่ที่ 3 ถนนอัมพวัน คลองแห หาดใหญ่ สงขลา 90110	สูง	Checking..
-13215	ร้านเซเว่น สาขา ถนนนวลแก้วอุทิศ	TRUE	สงขลา	เลขที่ - 7-11 CP ALL (รหัสร้าน_13215) ถนนนวลแก้วอุทิศ - คอหงส์ หาดใหญ่ สงขลา 90110	สูง	Checking..
-13304	ร้านเซเว่น สาขา เพชรเกษมซ.1	TRUE	สงขลา	เลขที่ - 912 CP ALL (รหัสร้าน_13304) เพชรเกษม ซ.1 เพชรเกษม หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Checking..
-13449	ร้านเซเว่น สาขา ลพบุรีราเมศวร์(ขาออก)	TRUE	สงขลา	เลขที่ - 108/7 หมู่ที่ 3 ลพบุรีราเมศวร์ ขาออก คลองแห หาดใหญ่ สงขลา 90110	สูง	Checking..
-13559	ร้านเซเว่น สาขา ปตท.จะนะ 2	TRUE	สงขลา	เลขที่ - 14/1 หมู่ที่ 1 ปตท.จะนะ2-หาดใหญ่ ปัตตานี บ้านนา จะนะ สงขลา 90130	สูง	Checking..
-14084	ร้านเซเว่น สาขา ถนนสนามบิน(แอร์พอร์ท)	TRUE	สงขลา	เลขที่ - GREENFIELD ถนนสนามบิน(แอร์พอร์ต) ควนลัง หาดใหญ่ สงขลา 90110	สูง	Checking..
-14112	ร้านเซเว่น สาขา คลองแห-คูเต่า	TRUE	สงขลา	เลขที่ 18/17 18/18 18/19 18/20 หมู่ที่ 5 คลองแห หาดใหญ่ สงขลา 90110	สูง	Checking..
-14320	ร้านเซเว่น สาขา บ้านโคกเมา(บางกล่ำ)	TRUE	สงขลา	เลขที่ - ถนนท่าช้าง บางกล่ำ สงขลา 90110	สูง	Checking..
-14404	ร้านเซเว่น สาขา ท่าอากาศย่านหาดใหญ่	TRUE	สงขลา	เลขที่ 99 หมู่ 3 ถนน สนามบินพาณิชย์ คลองหลา คลองหอยโข่ง สงขลา 90115	สูง	Checking..
-14709	ร้านเซเว่น สาขา เพชรเกษมซ.10	TRUE	สงชลา	เลขที่ โฉนดที่ดินเลขที่ 7423 หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Checking..
-14750	ร้านเซเว่น สาขา ตำบลน้ำน้อย	TRUE	สงขลา	เลขที่ 114 หมู่ 1 น้ำน้อย หาดใหญ่ สงขลา 90110	สูง	Checking..
-15045	ร้านเซเว่น สาขา HatyaiElegance	TRUE	สงขลา	เลขที่ - โฉนด ควนลัง หาดใหญ่ สงขลา 90110	สูง	Checking..
-15185	ร้านเซเว่น สาขา สะบ้าย้อย-คูหา	AIS	สงขลา	เลขที่ - คูหา สะบ้าย้อย สงขลา 90210	สูง	Checking..
-15931	ร้านเซเว่น สาขา กาญจนวนิช(แยกคลองหวะ)	TRUE	สงขลา	เลขที่ - รหัสสาขา_15931 กาญจนวนิช(แยกคลองหวะ) - คอหงส์ หาดใหญ่ สงขลา 90110	สูง	Checking..
-16164	ร้านเซเว่น สาขา ตำบลบ้านหาร(บางกล่ำ)	AIS	สงขลา	เลขที่ - ATM 7-11 รหัสสาขา 16164 สาขาบ้านหาร(บางกล่ำ) - บ้านหาร บางกล่ำ สงขลา 90110	สูง	Checking..
-16187	ร้านเซเว่น สาขา ตลาดมากินตะ	AIS	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 16187 สาขาตลาดมากินตะ - - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Checking..
-16198	ร้านเซเว่น สาขา ตำบลบ้านนา(จะนะ)	TRUE	สงขลา	เลขที่ - 7/6-8 หมู่ 1 รหัสสาขา 16198 บ้านนา(จะนะ) หาดใหญ่ -ปัตตานี บ้านนา จะนะ สงขลา 90130	สูง	Checking..
-16287	ร้านเซเว่น สาขา ถนนนครใน	TRUE	สงขลา	เลขที่ - โฉนด รหัสสาขา16287 สาขาถนนนครใน - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Checking..
-16566	ร้านเซเว่น สาขา วังใหญ่(เทพา)	TRUE	สงขลา	เลขที่ - 7-ELEVEN รหัสสาขา16566 7-11 วังใหญ่(เทพา) - วังใหญ่ เทพา สงขลา 90260	สูง	Checking..
-16647	ร้านเซเว่น สาขา ตำบลเกาะสะบ้า	AIS	สงขลา	เลขที่ - รหัสสาขา 16647 7-11 ตำบลเกาะสะบ้า - เกาะสะบ้า เทพา สงขลา 90150	สูง	Checking..
-16648	ร้านเซเว่น สาขา บางกล่ำ	AIS	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 16648 สาขาบางกล่ำ - - บางกล่ำ บางกล่ำ สงขลา 90110	สูง	Checking..
-16699	ร้านเซเว่น สาขา PTTOR หาดใหญ่ (ช่องเขา)	TRUE	สงขลา	เลขที่ - 486 รหัสสาขา 16699 PTTOR หาดใหญ่(ช่องเขา) ศุภสารรังสรรค์ หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Checking..
-16703	ร้านเซเว่น สาขา ตำบลทุ่งใหญ่	TRUE	สงขลา	เลขที่ - โฉนด ซีพีออลล์ รหัส_16703 ตำบลทุ่งใหญ่ - น้ำน้อย หาดใหญ่ สงขลา 90110	สูง	Checking..
-16776	ร้านเซเว่น สาขา PTTOR สนามบินหาดใหญ่	TRUE	สงขลา	เลขที่ - 965 หมู่ 1 รหัสสาขา 16776 PTTOR สนามบินหาดใหญ่ สนามบิน-ลพบุรีราเมศวนร์ ควนลัง หาดใหญ่ สงขลา 90110	สูง	Checking..
-17046	ร้านเซเว่น สาขา ตำบลทับช้าง	TRUE	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 17046 ตำบลทับช้าง - ทับช้าง นาทวี สงขลา 90160	สูง	Checking..
-17208	ร้านเซเว่น สาขา PTTOR สะบ้าย้อย	AIS	สงขลา	เลขที่ - 44204 รหัสสาขา 17208 PTTOR สะบ้าย้อย ลำไพร-สะบ้าย้อย 1 สะบ้าย้อย สะบ้าย้อย สงขลา 90210	สูง	Checking..
-17360	ร้านเซเว่น สาขา ม.ราชภัฏสงขลา	TRUE	สงขลา	เลขที่ - 7-ELEVEN รหัสสาขา 17360 ม.ราชภัฏสงขลา - เขารูปช้าง เมืองสงขลา สงขลา 90000	สูง	Checking..
-17406	ร้านเซเว่น สาขา ถนนบางนา(บางกล่ำ)	TRUE	สงขลา	เลขที่ - 7-ELEVEN รหัสสาขา 17406 ถนนบางนา(บางกล่ำ) - ท่าช้าง บางกล่ำ สงขลา 90110	สูง	Checking..
-17612	ร้านเซเว่น สาขา ถนนกาญจนราเมศวร์	TRUE	สงขลา	เลขที่ - 7-11 รหัสสาขา 17612 ถนนกาญจนราเมศวร์ - คลองแห หาดใหญ่ สงขลา 90110	สูง	Checking..
-17955	ร้านเซเว่น สาขา ตำบลคลองแห	TRUE	สงขลา	เลขที่ - 7-11 รหัสสาขา 17955 ตำบลคลองแห - คลองแห หาดใหญ่ สงขลา 90110	สูง	Checking..
-17975	ร้านเซเว่น สาขา ตำบลเขาพระ	TRUE	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 17975 ตำบลเขาพระ - เขาพระ รัตภูมิ สงขลา 90180	สูง	Checking..
-18332	ร้านเซเว่น สาขา ตลาดน้ำคลองแห	TRUE	สงขลา	เลขที่ - โฉนด รหัสสาขา 18332 ตลาดน้ำคลองแห - คลองแห หาดใหญ่ สงขลา 90110	สูง	Checking..
-18468	ร้านเซเว่น สาขา PTTOR บ้านตรับ	TRUE	สงขลา	เลขที่ - 196 หมู่ 11 รหัสสาขา 18468 PTTOR บ้านตรับ - จะโหนง จะนะ สงขลา 90130	สูง	Checking..
-18506	ร้านเซเว่น สาขา PTTOR หน้าสวนสาธารณะ (หาดใหญ่)	TRUE	สงขลา	เลขที่ - 270/2 รหัสสาขา 18506 7-11 PTTOR หน้าสวนสาธารณะ - หาดใหญ่ หาดใหญ่ สงขลา 90110	สูง	Checking..
-18651	ร้านเซเว่น สาขา ถนนภาสว่าง	TRUE	สงขลา	เลขที่ - โฉนด รหัสสาขา 18651 ถนนภาสว่าง - คอหงส์ หาดใหญ่ สงขลา 90110	สูง	Checking..
-18652	ร้านเซเว่น สาขา ปักธง(หาดใหญ่)	TRUE	สงขลา	เลขที่ - โฉนด รหัสสาขา 18652 7-11 ปักธง(หาดใหญ่) - คอหงส์ หาดใหญ่ สงขลา 90110	สูง	Checking..
-18691	ร้านเซเว่น สาขา คลองยา(บ้านพรุ)	TRUE	สงขลา	เลขที่ - โฉนด รหัสสาขา 18691 คลองยา(บ้านพรุ) - บ้านพรุ หาดใหญ่ สงขลา 90250	สูง	Checking..
-18953	ร้านเซเว่น สาขา ถนนลำไพล-โคกโพธิ์	AIS	สงขลา	เลขที่ - ร้าน 7-11 รหัสสาขา 18953 ถนนลำไพล-โคกโพธิ์ - ท่าม่วง เทพา สงขลา 90150	สูง	Checking..
-19453	ร้านเซเว่น สาขา หน้าสนามบินหาดใหญ่	TRUE	สงขลา	เลขที่ - โฉนด รหัสสาขา 19453 7-11 หน้าสนามบินหาดใหญ่ - คลองหลา คลองหอยโข่ง สงขลา 90110	สูง	Checking..
-19956	ร้านเซเว่น สาขา ตำบลพะตง	TRUE	สงขลา	เลขที่ - 7-ELEVEN รหัสสาขา 19956 ตำบลพะตง - พะตง หาดใหญ่ สงขลา 90230	สูง	Checking..
-22422	ร้านเซเว่น สาขา ถนนสงขลา-นวมินทร์(ขาเข้า)	AIS	สงขลา	เลขที่ - 7-ELEVEN รหัสสาขา 22422 ถนนสงขลา-นวมินทร์(ขาเข้า) - เขารูปช้าง เมืองสงขลา สงขลา 90000	สูง	Checking..
-22745	ร้านเซเว่น สาขา ถนนนวลแก้วอุทิศ 2	TRUE	สงขลา	เลขที่ - โฉนด รหัสสาขา 22745 7-11 ถนนนวลแก้วอุทิศ 2 - คอหงส์ หาดใหญ่ สงขลา 90110	สูง	Checking..
-23209					สูง	Checking..
-2413	ร้านเซเว่น สาขา ย่านตาขาว	TRUE	ตรัง	เลขที่ 32 หมู่ 1 ถ.ตรัง-ปะเหลียน ย่านตาขาว ย่านตาขาว ตรัง 92140	สูง	No
-17813	ร้านเซเว่น สาขา PTTOR สายบุรี	TRUE	ปัตตานี	เลขที่ - 7-ELEVEN รหัสสาขา 17813 PTTOR สายบุรี - ตะลุบัน สายบุรี ปัตตานี 94110	สูง	Checking..
-15922	ร้านเซเว่น สาขา บ้านโสร่ง	AIS	ปัตตานี	เลขที่ - 7-ELEVEN รหัสสาขา 15922 บ้านโสร่ง - เขาตูม ยะรัง ปัตตานี 94160	ปานกลาง	Checking..
-4384	ร้านเซเว่น สาขา ถนนนาเกลือ 2	TRUE	ปัตตานี	เลขที่ - 122/22 หมู่ที่ 8 ถนนนาเกลือ บานา เมืองปัตตานี ปัตตานี 94000	ปานกลาง	Checking..
-4007	ร้านเซเว่น สาขา ปตท.ส.กมลวัฒนา	TRUE	ปัตตานี	เลขที่ - 162/42 หมู่ที่ 11 ปตท.ส.กลมวัฒนา บานา เมืองปัตตานี ปัตตานี 94000	ปานกลาง	Checking..
-6810	ร้านเซเว่น สาขา ปตท.ปาลัส	TRUE	ปัตตานี	เลขที่ - 7/5 หมู่ที่ ที่1 CP ALL (รหัสร้าน_6810) ปตท.ปะนาเระ 6810 - ควน ปะนาเระ ปัตตานี 94130	ปานกลาง	Checking..
-19398	ร้านเซเว่น สาขา บางปู	TRUE	ปัตตานี	เลขที่ - 9 ม.3 รหัสสาขา 19398 บางปู - บางปู ยะหริ่ง ปัตตานี 94150	สูง	Checking..
-13820	ร้านเซเว่น สาขา วิฑูรอุทิศ 4	TRUE	ยะลา	เลขที่ - 70 ,72 CP ALL (รหัสร้าน_13820) สาขาวิฑูรอุทิศ 4 วิฑูรอุทิศ 4 สะเตง เมืองยะลา ยะลา 95000	สูง	No
-15692	ร้านเซเว่น สาขา บ้านสถิตย์ภิรมย์	TRUE	ยะลา	เลขที่ - 99/115,99/116,99/117, 99/118 หมู่ที่ 1 เมืองยะลา ยะลา 95000	สูง	No
-19044	ร้านเซเว่น สาขา ซอยโรงสี	TRUE	ยะลา	เลขที่ - 243/39 ม.12 รหัสสาขา 19044 ซอยโรงสี - สะเตงนอก เมืองยะลา ยะลา 95000	สูง	Checking..
-5554	ร้านเซเว่น สาขา ศรีปุตรา	TRUE	ยะลา	เลขที่ - 808 CP ALL (รหัสร้าน_5554) ศรีปุตรา รหัสสาขา5554 สิโรรส สะเตง เมืองยะลา ยะลา 95000	สูง	Checking..
-16367	ร้านเซเว่น สาขา ตือเบาะ 2	TRUE	ยะลา	เลขที่ - 127/14 หมู่ 10 รหัส_16367 ตือเบาะ 2 - สะเตง เมืองยะลา ยะลา 95000	สูง	Checking..
-13121	ร้านเซเว่น สาขา หน้าโคลีเซียม	TRUE	ยะลา	เลขที่ - หน้าโคลีเซียม สะเตง เมืองยะลา ยะลา 95000	สูง	No
-15883	PTTOR ลำใหม่(ยะลา)	TRUE	ยะลา	เลขที่ - 85/11 รหัสสาขา 15883 PTTOR ลำใหม่(ยะลา) 85/11 ลำใหม่ เมืองยะลา ยะลา 95160	สูง	Checking..
-4977	ร้านเซเว่น สาขา ธนวิถี	TRUE	ยะลา	เลขที่ - 8-10 ธนวิถี เทศบาล4 สะเตง เมืองยะลา ยะลา 95000	สูง	Checking..
-5518	ร้านเซเว่น สาขา สินอุทิศ	TRUE	ยะลา	เลขที่ - 43/1 สินอุทิศ เทศบาล1 สะเตง เมืองยะลา ยะลา 95000	สูง	No
-6496	ร้านเซเว่น สาขา ปตท.ละงู	TRUE	สตูล	เลขที่ 222 หมู่ 9 ละงู ละงู สตูล 91110	สูง	No
-1918	ร้านเซเว่น สาขา ละงู	TRUE	สตูล	เลขที่ 38-39 หมู่ที่ 4 กำแพง ละงู สตูล 91110	สูง	No
-5101	ร้านเซเว่น สาขา หน้า ร.พ. นราธิวาส	TRUE	นราธิวาส	เลขที่ - 285 หน้า ร.พ. นราธิวาส ระแงะมรรคา บางนาค เมืองนราธิวาส นราธิวาส 96000	ปานกลาง	Checking..
-5559	ร้านเซเว่น สาขา FR.ศรีสาคร	AIS	นราธิวาส	เลขที่ 41 หมู่ 1 ศรีสาคร ศรีสาคร นราธิวาส 96210	สูง	Checking..
-18162	ร้านเซเว่น สาขา หน้าโรงพยาบาลจะแนะ	AIS	นราธิวาส	เลขที่ - โฉนด รหัสสาขา 18162 หน้าโรงพยาบาลจะแนะ - จะแนะ จะแนะ นราธิวาส 96220	สูง	Checking..
-19470	ร้านเซเว่น สาขา PTTOR จะแนะ	TRUE	นราธิวาส	เลขที่ - 7-ELEVEN รหัสสาขา 19470 PTTOR จะแนะ - ดุซงญอ จะแนะ นราธิวาส 96220	ปานกลาง	Checking..
-16584	ร้านเซเว่น สาขา กะพ้อ	AIS	ปัตตานี	เลขที่ - 124/7-124/9 รหัสสาขา 16584 7-11 กะพ้อ - กะรุบี กะพ้อ ปัตตานี 94230	ปานกลาง	Checking..
-18031	ร้านเซเว่น สาขา ปะนาเระ	TRUE	ปัตตานี	เลขที่ - 267/1 หมู่ 4 รหัสสาขา 18031 สาขาปะนาเระ - ปะนาเระ ปะนาเระ ปัตตานี 94130	ปานกลาง	Checking..
-7847	ร้านเซเว่น สาขา ปากพะยูน	TRUE	พัทลุง	752/2-3 หมู่ 1 ปากพะยูน ปากพะยูน พัทลุง 93120	สูง	Checking..
-19979	ร้านเซเว่น สาขา บ้านพรุพ้อ	TRUE	พัทลุง	เลขที่ - โฉนด รหัสสาขา 19979 7-11 บ้านพรุพ้อ - โคกทราย ป่าบอน พัทลุง 93170	สูง	Checking..
-5317	ร้านเซเว่น สาขา วัดเห้งเจีย	TRUE	ยะลา	เลขที่ - 245/37 หมู่ที่ 4 วัดเห้งเจีย สะเตงนอก เมืองยะลา ยะลา 95000	สูง	Checking..
-6041	ร้านเซเว่น สาขา ลำใหม่	AIS	ยะลา	เลขที่ - 25 หมู่ที่ 1 ลำใหม่ เมืองยะลา ยะลา 95000	สูง	Checking..
-8636	ร้านเซเว่น สาขา ตลาดเมืองใหม่	TRUE	ยะลา	เลขที่ - 291-293 ตลาดเมืองใหม่ เปรมจิตต์ สุรพันธ์ สะเตง เมืองยะลา ยะลา 95000	สูง	Checking..
-9193	ร้านเซเว่น สาขา ปตท.ยะลา-หาดใหญ่กม.125	TRUE	ยะลา	เลขที่ 2/10 หมู่ 4 ท่าสาป เมืองยะลา ยะลา 95000	ปานกลาง	Checking..
-13120	ร้านเซเว่น สาขา จารูพัฒนา 2	TRUE	ยะลา	เลขที่ - ที่ดินเปล่า CP ALL (รหัสร้าน_13120) สาขาจารูพัฒนา 2 รหัส 13120 - สะเตง เมืองยะลา ยะลา 95000	สูง	Checking..
-16302	ร้านเซเว่น สาขา PTTOR พีทีดี ยะลา (ขาเข้า)	AIS	ยะลา	เลขที่ - 2/14 หมู่ 4 PTTOR พีทีดี ยะลา (ขาเข้า) รหัสสาขา 16302 - ท่าสาป เมืองยะลา ยะลา 95000	สูง	Checking..
-16622	ร้านเซเว่น สาขา PTTOR มัรกัส(ยะลา)	TRUE	ยะลา	เลขที่ - 13/4 หมู่ที่ 3 รหัสสาขา 16622 PTTOR มัรกัส(ยะลา) - สะเตง เมืองยะลา ยะลา 95000	สูง	Checking..
-16739	ร้านเซเว่น สาขา บ้านบันนังดามา	TRUE	ยะลา	เลขที่ - 319 หมู่ 1 7-11 รหัสสาขา 16739 บ้านบันนังดามา - กาบัง กาบัง ยะลา 95120	สูง	Checking..
-17947	ร้านเซเว่น สาขา บ้านเนียง	AIS	ยะลา	เลขที่ - 96/5 หมู่ 4 7-11 รหัสสาขา 17947 สาขาบ้านเนียง - เปาะเส้ง เมืองยะลา ยะลา 95000	สูง	Checking..
-18544	ร้านเซเว่น สาขา PTTOR กาบัง	TRUE	ยะลา	เลขที่ - 211/2 หมู่ 1 รหัสสาขา 18544 7-11 PTTOR กาบัง - กาบัง กาบัง ยะลา 95120	สูง	Checking..
-19900	ร้านเซเว่น สาขา PTTOR สะเตงนอก (เมืองยะลา)	TRUE	ยะลา	เลขที่ - 243/34 หมู่ 12 รหัสสาขา 19900 PTTOR สะเตงนอก (เมืองยะลา) - สะเตงนอก เมืองยะลา ยะลา 95000	สูง	Checking..
-2598	ร้านเซเว่น สาขา สตูล2	TRUE	สตูล	เลขที่ 71/2 ถ.ศุลกานุกูล พิมาน เมืองสตูล สตูล 91000	สูง	Checking..
-4763	ร้านเซเว่น สาขา โรงพยาบาลสตูล	AIS	สตูล	เลขที่ 20 ถ.หัตถกรรมศึกษา พิมาน เมืองสตูล สตูล 91000	สูง	Checking..
-4967	ร้านเซเว่น สาขา ปตท.บ้านควน	TRUE	สตูล	เลขที่ - 413 หมู่ 5 CP ALL (รหัสร้าน_4967) ปตท.บ้านควน 4967 - บ้านควน เมืองสตูล สตูล 91000	สูง	Checking..
-8559	ร้านเซเว่น สาขา ทุ่งหว้า	TRUE	สตูล	เลขที่ 196 198 หมู่ที่ 2 ทุ่งหว้า ทุ่งหว้า สตูล 91120	ปานกลาง	Checking..
-8631	ร้านเซเว่น สาขา คลองขุด	AIS	สตูล	508 หมู่ที่ 7 คลองขุด เมืองสตูล สตูล 91000	ปานกลาง	Checking..
-9103	ร้านเซเว่น สาขา หัตถกรรมศึกษา	AIS	สตูล	57 59 61 63 ถ.หัตถกรรมศึกษา พิมาน เมืองสตูล สตูล 91000	สูง	Checking..
-11072	ร้านเซเว่น สาขา บ้านท่าจีน (สตูล)	TRUE	สตูล	เลขที่ - 708-708/1 หมู่ 6 CP ALL (รหัสร้าน_11072) บ้านท่าจีน(สตูล) - คลองขุด เมืองสตูล สตูล 91000	ปานกลาง	Checking..
-13061	ร้านเซเว่น สาขา สตูลธานีซอย7	TRUE	สตูล	เลขที่ - สตูลธานีซอย7 พิมาน เมืองสตูล สตูล 91000	สูง	Checking..
-14459	ร้านเซเว่น สาขา ถนนปานชูรำลึก	TRUE	สตูล	เลขที่ - โฉนดที่560 CP ALL (รหัสร้าน_14459) สาขาถนนปานชูรำลึก - ปานชูรำลึก พิมาน เมืองสตูล สตูล 91000	สูง	Checking..
-15845	ร้านเซเว่น สาขา แยกฉลุง	TRUE	สตูล	เลขที่ - ร้าน 7-11 สาขา แยกฉลุง 7-11 รหัสสาขา 15845 ร้าน 7-11 ฉลุง เมืองสตูล สตูล 91140	สูง	Checking..
-16447	ร้านเซเว่น สาขา บ้านในใส	TRUE	สตูล	เลขที่ - 186 หมู่ 15 7-11 รหัสสาขา 16447 บ้านในใส - ละงู ละงู สตูล 91110	สูง	Checking..
-18293	ร้านเซเว่น สาขา บ้านปากบารา	TRUE	สตูล	เลขที่ - 7-ELEVEN รหัสสาขา 18293 บ้านปากบารา - ปากน้ำ ละงู สตูล 91110	ปานกลาง	Checking..
-19035	ร้านเซเว่น สาขา ศุลกานุกูล ซอย 9	TRUE	สตูล	เลขที่ - โฉนด รหัสสาขา 19035 ศุลกานุกูล ซอย 9 - พิมาน เมืองสตูล สตูล 91000	สูง	Checking..
-19250	ร้านเซเว่น สาขา ตำบลปากน้ำ	TRUE	สตูล	เลขที่ - 7-11 รหัสสาขา 19250 ตำบลปากน้ำ - ปากน้ำ ละงู สตูล 91110	ปานกลาง	Checking..
-23271					ปานกลาง	Checking..
-23346					สูง	Checking..`;
-
-        const data = tsv_parser(tsvData);
-        let filteredData = [...data];
-        let currentPage = 1;
+        // Helper หา index ของคอลัมน์จากชื่อ (เผื่อสลับที่)
+        const getIdx = (keywords) => headers.findIndex(h => keywords.some(k => h.includes(k)));
         
-        // --- UPDATED: เปลี่ยนจาก 10 เป็น 50 ตามที่ขอครับ ---
-        const itemsPerPage = 50;
-        
-        let thailandGeoJsonData = null;
+        const idIdx = getIdx(['ID_Shop', 'ID']);
+        const nameIdx = getIdx(['Store_Name', 'ชื่อร้าน']);
+        const simIdx = getIdx(['SIM']);
+        const provIdx = getIdx(['Province', 'จังหวัด']);
+        const statusIdx = getIdx(['Status', 'สถานะ']);
+        const floodIdx = getIdx(['น้ำท่วม', 'Flood']);
+        const latIdx = getIdx(['Latitude', 'lat']);
+        const lngIdx = getIdx(['Longitude', 'lon', 'lng']);
 
-        // --- 2. MAP SETUP ---
-        // เริ่มต้นที่ภาคใต้เพราะข้อมูลเน้นภาคใต้
-        const map = L.map('map').setView([7.00, 100.50], 8);
-        const initialZoom = 8;
-        const initialCenter = [7.00, 100.50];
-        let geojsonLayer;
-        let markerLayer = L.layerGroup().addTo(map);
+        return lines.slice(1).map(line => {
+            const cols = line.split('\t');
+            if (cols.length < 2) return null; // ข้ามบรรทัดว่าง
 
-        // UPDATED: เพิ่มพิกัดจังหวัดภาคใต้ให้ครบ เพื่อให้หมุดขึ้นถูกต้อง
-        const provinceCoords = {
-            'กรุงเทพมหานคร': [13.75, 100.50],
-            'สงขลา': [7.17, 100.61],
-            'สตูล': [6.62, 100.06],
-            'ปัตตานี': [6.86, 101.25],
-            'ยะลา': [6.54, 101.28],
-            'นราธิวาส': [6.42, 101.82],
-            'พัทลุง': [7.61, 100.07],
-            'ตรัง': [7.55, 99.60],
-            'ภูเก็ต': [7.88, 98.39],
-            'นครศรีธรรมราช': [8.43, 99.96],
-            'กระบี่': [8.08, 98.90],
-            'พังงา': [8.45, 98.52],
-            'ระนอง': [9.95, 98.63],
-            'สุราษฎร์ธานี': [9.13, 99.33],
-            'ชุมพร': [10.49, 99.17]
-        };
+            const val = (idx) => (idx !== -1 && cols[idx]) ? cols[idx].trim() : '';
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
-        }).addTo(map);
-
-        // --- 3. CHART SETUP ---
-        const chartCtx = document.getElementById('provinceChart').getContext('2d');
-        let provinceChart;
-
-        // --- 4. FETCH DATA ---
-        fetch('https://raw.githubusercontent.com/apisit/thailand.json/master/thailand.json')
-            .then(response => response.json())
-            .then(geojson => {
-                thailandGeoJsonData = geojson;
-                renderAll();
-            })
-            .catch(error => console.error("Could not load Map Data:", error));
-
-        // --- 5. RENDER FUNCTIONS ---
-        function renderAll() {
-            if (!thailandGeoJsonData) return;
-            updateKPIs();
-            updateMap();
-            updateChart();
-            updateTable();
-        }
-
-        function updateKPIs() {
-            document.getElementById('kpi-total-stores').textContent = filteredData.length;
-            document.getElementById('kpi-affected-provinces').textContent = new Set(filteredData.map(d => d.Province).filter(Boolean)).size;
-            document.getElementById('kpi-high-risk').textContent = filteredData.filter(d => ['สูง', 'ปานกลาง'].includes(d.Risk)).length;
-            document.getElementById('kpi-flooded').textContent = filteredData.filter(d => d.Status === 'Yes').length;
-
-            const countSim = (provider) => filteredData.filter(d => d.SIM && d.SIM.trim().toLowerCase() === provider.toLowerCase()).length;
-            document.getElementById('kpi-true').textContent = countSim('true');
-            document.getElementById('kpi-dtac').textContent = countSim('dtac');
-            document.getElementById('kpi-ais').textContent = countSim('ais');
-        }
-
-        function updateMap() {
-            if (geojsonLayer) map.removeLayer(geojsonLayer);
-            markerLayer.clearLayers();
-
-            // คำนวณสีจังหวัด
-            const provinceData = filteredData.reduce((acc, store) => {
-                const p = store.Province;
-                if (!p) return acc;
-                if (!acc[p]) acc[p] = { total: 0, flooded: 0, high: 0 };
-                acc[p].total++;
-                if (store.Status === 'Yes') acc[p].flooded++;
-                if (store.Risk === 'สูง') acc[p].high++;
-                return acc;
-            }, {});
-
-            geojsonLayer = L.geoJSON(thailandGeoJsonData, {
-                style: feature => ({
-                    fillColor: getProvinceColor(provinceData[feature.properties.name]),
-                    weight: 1, opacity: 1, color: '#fff', dashArray: '3', fillOpacity: 0.7
-                }),
-                onEachFeature: (feature, layer) => {
-                    const pName = feature.properties.name;
-                    const stats = provinceData[pName];
-                    if (stats) {
-                        layer.bindTooltip(`<b>${pName}</b><br>สาขา: ${stats.total}<br>เสี่ยงสูง: ${stats.high}<br>ท่วม: ${stats.flooded}`);
-                    }
-                }
-            }).addTo(map);
-
-            // สร้าง Custom Icon
-            const createIcon = (color) => L.divIcon({
-                html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${color}" width="32px" height="32px"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z"/><circle cx="12" cy="9.5" r="1.5" fill="white"/></svg>`,
-                iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -34]
-            });
-
-            const icons = {
-                'ต่ำ': createIcon('#10b981'),
-                'ปานกลาง': createIcon('#f59e0b'),
-                'สูง': createIcon('#ef4444')
+            return {
+                id: val(idIdx),
+                name: val(nameIdx),
+                sim: val(simIdx),
+                province: val(provIdx),
+                status: val(statusIdx) || 'Unknown',
+                flood: val(floodIdx) || 'Checking..',
+                lat: parseFloat(val(latIdx)) || 0,
+                lng: parseFloat(val(lngIdx)) || 0
             };
+        }).filter(item => item && item.id);
+    }
 
-            const bounds = L.latLngBounds(); // สำหรับ Auto Zoom
+    // --- 3. INIT DATA ---
+    let filteredData = parseTsv(tsvData);
+    let rawStoreData = [...filteredData]; // เก็บต้นฉบับไว้สำหรับ Reset
+    let currentPage = 1;
+    const itemsPerPage = 50;
+    
+    // --- 4. MAP SETUP ---
+    const map = L.map('map').setView([7.00, 100.50], 9);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+    }).addTo(map);
 
-            filteredData.forEach(store => {
-                const coords = provinceCoords[store.Province];
-                if (coords) {
-                    // กระจายจุดเล็กน้อยไม่ให้ทับกันเป๊ะๆ
-                    const lat = coords[0] + (Math.random() - 0.5) * 0.08;
-                    const lng = coords[1] + (Math.random() - 0.5) * 0.08;
-                    
-                    const marker = L.marker([lat, lng], { icon: icons[store.Risk] || icons['ต่ำ'] });
-                    marker.bindPopup(`<b>${store.Store_Name}</b><br>${store.Province}<br>SIM: ${store.SIM}<br>Status: ${store.Status}`);
-                    markerLayer.addLayer(marker);
-                    bounds.extend([lat, lng]);
+    let markersLayer = L.layerGroup().addTo(map);
+
+    // --- 5. CHART SETUP ---
+    const chartCtx = document.getElementById('provinceChart').getContext('2d');
+    let provinceChart;
+
+    // --- 6. RENDER FUNCTIONS ---
+    function renderAll() {
+        updateKPIs();
+        updateMap();
+        updateChart();
+        updateTable();
+    }
+
+    function updateKPIs() {
+        const total = filteredData.length;
+        const flooded = filteredData.filter(d => d.flood === 'Yes').length;
+        const down = filteredData.filter(d => d.status.toLowerCase().includes('down')).length;
+        const online = filteredData.filter(d => d.status.toLowerCase().includes('online')).length;
+
+        document.getElementById('kpi-total').textContent = total;
+        document.getElementById('kpi-flood').textContent = flooded;
+        document.getElementById('kpi-down').textContent = down;
+        document.getElementById('kpi-online').textContent = online;
+
+        const countSim = (provider) => filteredData.filter(d => d.sim && d.sim.toUpperCase() === provider).length;
+        document.getElementById('kpi-sim-true').textContent = countSim('TRUE');
+        document.getElementById('kpi-sim-ais').textContent = countSim('AIS');
+        document.getElementById('kpi-sim-dtac').textContent = countSim('DTAC');
+    }
+
+    function updateMap() {
+        markersLayer.clearLayers();
+        const bounds = L.latLngBounds();
+
+        filteredData.forEach(store => {
+            if (store.lat && store.lng && store.lat !== 0) {
+                let color = '#22c55e'; // Green
+                let zIndex = 100;
+                
+                // Priority: Flood > Down > Checking > Online
+                if (store.status.toLowerCase().includes('checking') || store.flood.toLowerCase().includes('checking')) {
+                    color = '#f97316'; // Orange
+                    zIndex = 200;
                 }
-            });
+                if (store.status.toLowerCase().includes('down')) {
+                    color = '#ef4444'; // Red
+                    zIndex = 300;
+                }
+                if (store.flood === 'Yes') {
+                    color = '#b91c1c'; // Dark Red
+                    zIndex = 400;
+                }
 
-            // Auto Zoom ไปหาจุด
-            if (filteredData.length > 0 && bounds.isValid()) {
-                map.fitBounds(bounds, { padding: [50, 50], maxZoom: 10 });
-            } else {
-                map.setView(initialCenter, initialZoom);
+                const icon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div style="background-color: ${color}; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.3);"></div>`,
+                    iconSize: [12, 12],
+                    iconAnchor: [6, 6]
+                });
+
+                const marker = L.marker([store.lat, store.lng], { icon: icon, zIndexOffset: zIndex });
+                
+                const statusColorClass = store.status.includes('Down') ? 'text-red-600 font-bold' : 'text-green-600';
+                const floodAlert = store.flood === 'Yes' ? '<div class="mt-1 text-white bg-red-600 px-2 py-0.5 rounded text-xs text-center">⚠️ น้ำท่วม (Flooded)</div>' : '';
+
+                marker.bindPopup(`
+                    <div class="font-sans">
+                        <div class="font-bold text-sm mb-1">${store.id} - ${store.name}</div>
+                        <div class="text-xs text-slate-500 mb-1">${store.province}</div>
+                        <div class="text-xs border-t pt-1 mt-1">
+                            Status: <span class="${statusColorClass}">${store.status}</span><br>
+                            SIM: <b>${store.sim}</b>
+                        </div>
+                        ${floodAlert}
+                    </div>
+                `);
+
+                markersLayer.addLayer(marker);
+                bounds.extend([store.lat, store.lng]);
             }
+        });
+
+        if (filteredData.length > 0 && bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
         }
+    }
 
-        function getProvinceColor(stats) {
-            if (!stats) return '#e2e8f0'; // สีเทาอ่อน (ไม่มีข้อมูล)
-            if (stats.flooded > 0) return '#ef4444'; // แดง (มีท่วม)
-            if (stats.high > 0) return '#f59e0b'; // ส้ม (เสี่ยงสูง)
-            return '#3b82f6'; // น้ำเงิน (ปกติ)
-        }
-
-        function updateChart() {
-            const counts = filteredData.reduce((acc, store) => {
-                const p = store.Province;
-                if (!p) return acc;
-                if (!acc[p]) acc[p] = { yes: 0, no: 0 };
-                store.Status === 'Yes' ? acc[p].yes++ : acc[p].no++;
-                return acc;
-            }, {});
-
-            const labels = Object.keys(counts);
-            const dataYes = labels.map(p => counts[p].yes);
-            const dataNo = labels.map(p => counts[p].no);
-
-            if (provinceChart) provinceChart.destroy();
-            provinceChart = new Chart(chartCtx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        { label: 'น้ำท่วม (Yes)', data: dataYes, backgroundColor: '#ef4444' },
-                        { label: 'ปกติ (No)', data: dataNo, backgroundColor: '#3b82f6' }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: { x: { stacked: true }, y: { stacked: true } }
-                }
-            });
-        }
-
-        function updateTable() {
-            const tbody = document.getElementById('dataTableBody');
-            tbody.innerHTML = '';
+    function updateChart() {
+        const counts = filteredData.reduce((acc, store) => {
+            const p = store.province;
+            if (!p) return acc;
+            if (!acc[p]) acc[p] = { flood: 0, down: 0, normal: 0 };
             
-            const start = (currentPage - 1) * itemsPerPage;
-            const end = start + itemsPerPage;
-            const pageData = filteredData.slice(start, end);
+            if (store.flood === 'Yes') acc[p].flood++;
+            else if (store.status.toLowerCase().includes('down')) acc[p].down++;
+            else acc[p].normal++;
+            
+            return acc;
+        }, {});
 
-            pageData.forEach(row => {
-                const tr = document.createElement('tr');
-                tr.className = "border-b hover:bg-slate-50";
-                tr.innerHTML = `
-                    <td class="px-4 py-3">${row.ID_Shop}</td>
-                    <td class="px-4 py-3 font-medium">${row.Store_Name}</td>
-                    <td class="px-4 py-3">${row.SIM}</td>
-                    <td class="px-4 py-3">${row.Province}</td>
-                    <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs text-white ${row.Risk === 'สูง' ? 'bg-red-500' : row.Risk === 'ปานกลาง' ? 'bg-amber-500' : 'bg-teal-500'}">${row.Risk}</span></td>
-                    <td class="px-4 py-3 text-center"><span class="px-2 py-1 rounded text-xs ${row.Status === 'Yes' ? 'bg-red-100 text-red-800 font-bold' : 'bg-slate-100 text-slate-600'}">${row.Status}</span></td>
-                `;
-                tbody.appendChild(tr);
-            });
+        const labels = Object.keys(counts);
+        const dataFlood = labels.map(p => counts[p].flood);
+        const dataDown = labels.map(p => counts[p].down);
+        const dataNormal = labels.map(p => counts[p].normal);
 
-            document.getElementById('pageInfo').textContent = `แสดง ${start+1}-${Math.min(end, filteredData.length)} จาก ${filteredData.length}`;
-            document.getElementById('prevPage').disabled = currentPage === 1;
-            document.getElementById('nextPage').disabled = end >= filteredData.length;
-        }
-
-        // --- UTILS ---
-        function tsv_parser(text) {
-            const lines = text.split('\n').filter(l => l.trim() !== ''); // ตัดบรรทัดว่างทิ้ง
-            const headers = lines[0].split('\t').map(h => h.trim());
-            return lines.slice(1).map(line => {
-                const vals = line.split('\t');
-                const obj = {};
-                headers.forEach((h, i) => obj[h] = vals[i] ? vals[i].trim() : '');
-                return obj;
-            }).filter(item => item.ID_Shop && item.Province); // กรองเอาเฉพาะข้อมูลที่มี ID และจังหวัด
-        }
-
-        // --- EVENTS ---
-        const resetFilter = () => {
-            filteredData = [...data];
-            document.getElementById('searchInput').value = '';
-            currentPage = 1;
-            renderAll();
-        };
-
-        document.getElementById('resetButton').addEventListener('click', resetFilter);
+        if (provinceChart) provinceChart.destroy();
         
-        document.getElementById('searchInput').addEventListener('input', (e) => {
-            const term = e.target.value.toLowerCase();
-            filteredData = data.filter(d => 
-                Object.values(d).some(val => val.toString().toLowerCase().includes(term))
-            );
-            currentPage = 1;
-            renderAll();
+        provinceChart = new Chart(chartCtx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'น้ำท่วม (Flood)', data: dataFlood, backgroundColor: '#b91c1c' },
+                    { label: 'อุปกรณ์ Down', data: dataDown, backgroundColor: '#f97316' },
+                    { label: 'ปกติ (Normal)', data: dataNormal, backgroundColor: '#22c55e' }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { x: { stacked: true }, y: { stacked: true } },
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+
+    function updateTable() {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+        const pageData = filteredData.slice(start, end);
+
+        pageData.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.className = "border-b hover:bg-slate-50 transition";
+            
+            let statusBadge = '';
+            if(row.status.toLowerCase().includes('down')) statusBadge = `<span class="bg-red-100 text-red-800 text-xs font-semibold px-2 py-0.5 rounded">Down</span>`;
+            else if(row.status.includes('Checking')) statusBadge = `<span class="bg-orange-100 text-orange-800 text-xs font-semibold px-2 py-0.5 rounded">Check</span>`;
+            else statusBadge = `<span class="bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded">Online</span>`;
+
+            let floodBadge = '';
+            if(row.flood === 'Yes') floodBadge = `<span class="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded shadow-sm">YES</span>`;
+            else if(row.flood.includes('Checking')) floodBadge = `<span class="text-orange-500 text-xs">Checking</span>`;
+            else floodBadge = `<span class="text-slate-400 text-xs">-</span>`;
+
+            tr.innerHTML = `
+                <td class="px-4 py-3 font-mono text-xs">${row.id}</td>
+                <td class="px-4 py-3 font-medium text-slate-700">${row.name}</td>
+                <td class="px-4 py-3">${row.province}</td>
+                <td class="px-4 py-3">${row.sim}</td>
+                <td class="px-4 py-3 text-center">${floodBadge}</td>
+                <td class="px-4 py-3 text-center">${statusBadge}</td>
+                <td class="px-4 py-3 text-xs text-slate-400">${row.lat ? row.lat.toFixed(4)+','+row.lng.toFixed(4) : '-'}</td>
+            `;
+            tbody.appendChild(tr);
         });
 
-        // Event Click on Cards
-        const filterBy = (key, val) => {
-            filteredData = data.filter(d => d[key] === val);
-            currentPage = 1;
-            renderAll();
-        }
-
-        document.getElementById('card-flooded').addEventListener('click', () => filterBy('Status', 'Yes'));
-        document.getElementById('card-high-risk').addEventListener('click', () => {
-             filteredData = data.filter(d => d.Risk === 'สูง');
-             currentPage = 1;
-             renderAll();
-        });
+        document.getElementById('pageInfo').textContent = `แสดง ${start+1}-${Math.min(end, filteredData.length)} จาก ${filteredData.length}`;
+        document.getElementById('btnPrev').disabled = currentPage === 1;
+        document.getElementById('btnNext').disabled = end >= filteredData.length;
         
-        ['card-total', 'card-provinces'].forEach(id => document.getElementById(id).addEventListener('click', resetFilter));
-        
-        const filterSim = (sim) => {
-            filteredData = data.filter(d => d.SIM && d.SIM.toLowerCase() === sim);
-            currentPage = 1;
-            renderAll();
-        }
-        document.getElementById('card-true').addEventListener('click', () => filterSim('true'));
-        document.getElementById('card-dtac').addEventListener('click', () => filterSim('dtac'));
-        document.getElementById('card-ais').addEventListener('click', () => filterSim('ais'));
+        document.getElementById('btnPrev').className = `px-3 py-1 text-sm border rounded-l ${currentPage === 1 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'hover:bg-slate-50'}`;
+        document.getElementById('btnNext').className = `px-3 py-1 text-sm border-t border-b border-r rounded-r ${end >= filteredData.length ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'hover:bg-slate-50'}`;
+    }
 
-        document.getElementById('prevPage').addEventListener('click', () => { if(currentPage > 1) { currentPage--; updateTable(); } });
-        document.getElementById('nextPage').addEventListener('click', () => { if(currentPage * itemsPerPage < filteredData.length) { currentPage++; updateTable(); } });
-
-        // Clock
-        setInterval(() => {
-            const now = new Date();
-            document.getElementById('clock').innerHTML = now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH');
-        }, 1000);
-
+    // --- 7. EVENTS ---
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase();
+        filteredData = rawStoreData.filter(d => 
+            d.id.toLowerCase().includes(term) || 
+            d.name.toLowerCase().includes(term) || 
+            d.province.toLowerCase().includes(term)
+        );
+        currentPage = 1; renderAll();
     });
+
+    document.getElementById('resetButton').addEventListener('click', () => {
+        filteredData = [...rawStoreData];
+        document.getElementById('searchInput').value = '';
+        currentPage = 1; renderAll();
+    });
+
+    document.getElementById('filter-flood').addEventListener('click', () => {
+        filteredData = rawStoreData.filter(d => d.flood === 'Yes');
+        currentPage = 1; renderAll();
+    });
+    document.getElementById('filter-down').addEventListener('click', () => {
+        filteredData = rawStoreData.filter(d => d.status.toLowerCase().includes('down'));
+        currentPage = 1; renderAll();
+    });
+    document.getElementById('filter-online').addEventListener('click', () => {
+        filteredData = rawStoreData.filter(d => d.status.toLowerCase().includes('online'));
+        currentPage = 1; renderAll();
+    });
+    document.getElementById('filter-total').addEventListener('click', () => {
+        filteredData = [...rawStoreData];
+        currentPage = 1; renderAll();
+    });
+
+    window.filterBySim = (sim) => {
+        filteredData = rawStoreData.filter(d => d.sim && d.sim.toUpperCase() === sim);
+        currentPage = 1; renderAll();
+    }
+
+    document.getElementById('btnPrev').addEventListener('click', () => { if(currentPage > 1) { currentPage--; updateTable(); }});
+    document.getElementById('btnNext').addEventListener('click', () => { if(currentPage * itemsPerPage < filteredData.length) { currentPage++; updateTable(); }});
+
+    setInterval(() => {
+        const now = new Date();
+        document.getElementById('clock').innerHTML = now.toLocaleTimeString('th-TH');
+    }, 1000);
+
+    // Initial Render
+    renderAll();
     </script>
 </body>
 </html>
