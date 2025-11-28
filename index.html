@@ -46,12 +46,13 @@
                 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/7-eleven_logo.svg/244px-7-eleven_logo.svg.png" alt="7-Eleven Logo" class="h-10 mr-4">
                 <div>
                     <h1 class="text-2xl font-bold text-slate-800">Flood Impact Monitor</h1>
-                    <p class="text-sm text-slate-500">ติดตามสถานะร้านและน้ำท่วม (Fixed SIM Column)</p>
+                    <p class="text-sm text-slate-500">ติดตามสถานะร้านและน้ำท่วม (Date & Time Fixed)</p>
                 </div>
             </div>
             
             <div class="flex flex-col items-end gap-2">
                 <div id="clock" class="text-right text-lg font-bold text-primary"></div>
+                
                 <div class="flex gap-2">
                     <input type="text" id="searchInput" placeholder="ค้นหา รหัส, ชื่อร้าน, จังหวัด..." class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary outline-none text-sm w-64">
                     <button id="resetButton" class="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 text-sm">รีเซ็ต</button>
@@ -342,8 +343,8 @@
 13061	U21460	WDS26928	ร้านเซเว่น สาขา สตูลธานีซอย7	953121496	TRUE	Cisco819	FIBER	สตูล	เลขที่ - สตูลธานีซอย7 พิมาน เมืองสตูล สตูล 91000	Online	Checking..		6.620318	100.066346
 15845	U97460	WDS30564	ร้านเซเว่น สาขา แยกฉลุง	955672524	TRUE	Cisco819	GPON	สตูล	เลขที่ - ร้าน 7-11 สาขา แยกฉลุง 7-11 รหัสสาขา 15845 ร้าน 7-11 ฉลุง เมืองสตูล สตูล 91140	Online	Checking..		6.7255727	100.065686
 18293	U53441	WDS42596	ร้านเซเว่น สาขา บ้านปากบารา	902420587	TRUE	AR617VW-LTE	GPON	สตูล	เลขที่ - 7-ELEVEN รหัสสาขา 18293 บ้านปากบารา - ปากน้ำ ละงู สตูล 91110	Online	Checking..				
-19250	U72880	WDS45914	ร้านเซเว่น สาขา ตำบลปากน้ำ	966467976	TRUE	AR611-LTE	GPON	สตูล	เลขที่ - 7-11 รหัสสาขา 19250 ตำบลปากน้ำ - ปากน้ำ ละงู สตูล 91110	Online	Checking..				
-18888	U72644	WDS44737	ร้านเซเว่น สาขา บ้านนายายหม่อม	902211836	TRUE	AR617VW-LTE	GPON	ตรัง	เลขที่ - 7-11 รหัสสาขา 18888 บ้านนายายหม่อม - ทุ่งกระบือ ย่านตาขาว ตรัง 92140	Online			7.392733	99.662752
+19250	U72880	WDS45914	ร้านเซเว่น สาขา ตำบลปากน้ำ	966467976	TRUE	AR611-LTE	GPON	สตูล	เลขที่ - 7-ELEVEN รหัสสาขา 19250 ตำบลปากน้ำ - ปากน้ำ ละงู สตูล 91110	Online	Checking..				
+18888	U72644	WDS44737	ร้านเซเว่น สาขา บ้านนายายหม่อม	902211836	TRUE	AR617VW-LTE	GPON	ตรัง	เลขที่ - 7-ELEVEN รหัสสาขา 18888 บ้านนายายหม่อม - ทุ่งกระบือ ย่านตาขาว ตรัง 92140	Online			7.392733	99.662752
 10338	U60569	WDS16982	ร้านเซเว่น สาขา ปะเหลียนใน	0659467466(A)	AIS	One540	FIBER	ตรัง	เลขที่ 14 หมู่ 1 ปะเหลียน ปะเหลียน ตรัง 92180	Online			7.327818	99.803084
 13448	U21455	WDS26923	ร้านเซเว่น สาขา ปตท.เขาชัยสน	953133756	TRUE	Cisco819	FIBER	พัทลุง	เลขที่ - 455 หมู่ที่ 1 ปตท.เขาชัยสน ควนขนุน เขาชัยสน พัทลุง 93130	Online			7.4739118	100.07376
 25261	U87814	WDS14071	ร้านเซเว่น สาขา ปตท.ป่าบอน(พัทลุง)	0659513398(A)	AIS	Cisco819	FIBER	พัทลุง	เลขที่ 222 หมู่ 10 ป่าบอน ป่าบอน พัทลุง 93170	Online			7.287756	100.155127
@@ -666,9 +667,10 @@
     document.getElementById('btnPrev').addEventListener('click', () => { if(currentPage > 1) { currentPage--; updateTable(); }});
     document.getElementById('btnNext').addEventListener('click', () => { if(currentPage * itemsPerPage < filteredData.length) { currentPage++; updateTable(); }});
 
+    // Clock
     setInterval(() => {
         const now = new Date();
-        document.getElementById('clock').innerHTML = now.toLocaleTimeString('th-TH');
+        document.getElementById('clock').innerHTML = now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH');
     }, 1000);
 
     // Initial Render
