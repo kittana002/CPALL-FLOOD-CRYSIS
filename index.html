@@ -31,7 +31,6 @@
         body { font-family: 'Sarabun', sans-serif; }
         #map { height: 600px; width: 100%; border-radius: 0.5rem; z-index: 1; }
         .leaflet-tooltip { font-family: 'Sarabun', sans-serif; font-weight: 600; }
-        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -47,7 +46,7 @@
                 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/7-eleven_logo.svg/244px-7-eleven_logo.svg.png" alt="7-Eleven Logo" class="h-10 mr-4">
                 <div>
                     <h1 class="text-2xl font-bold text-slate-800">Flood Impact Monitor</h1>
-                    <p class="text-sm text-slate-500">ติดตามสถานะร้านและน้ำท่วม (Import from Excel)</p>
+                    <p class="text-sm text-slate-500">ติดตามสถานะร้านและน้ำท่วม (Fixed SIM Column)</p>
                 </div>
             </div>
             
@@ -143,7 +142,6 @@
 
     <script>
     // --- 1. DATA PREPARATION (วางข้อมูล Excel ที่นี่) ---
-    // Header ที่รองรับ: ID_Shop, Store_Name, SIM, Province, Status..., น้ำท่วม..., Latitude, Longitude
     const tsvData = `ID_Shop	Circuit_MPLS	Circuit_CID_WDS	Store_Name	WDS_SIM_No	SIM	Model	Media	Province	Address	Status 24/11/25 10:00	ติดต่อร้านได้? (Yes/No)	น้ำท่วมอุปกรณ์? (Yes/No)	Latitude	Longitude
 6457	U88015	WDS14545	ร้านเซเว่น สาขา เตชาโต	640011057	TRUE	One540	GPON	สงขลา	เลขที่ 351 351/1 ถ.ธรรมนูญวิถี หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	7.007542	100.477221
 14305	U94224	WDS25322	ร้านเซเว่น สาขา ถนนคลองเรียน2	638735648	TRUE	Cisco819	GPON	สงขลา	เลขที่ 37/2 ถนนคลองเรียน2 หาดใหญ่ หาดใหญ่ สงขลา 90110	Down	Yes	No	6.999692	100.484258
@@ -401,18 +399,25 @@
 15183	U66306	WDS28908	ร้านเซเว่น สาขา บ้านขุนทองนาทับ	0982540986(A)	AIS	Cisco819	FIBER	สงขลา	เลขที่ - จะโหนง จะนะ สงขลา 90130	Online			7.0427812	100.656333
 5518	U19364	WDS25558	ร้านเซเว่น สาขา สินอุทิศ	917732187	TRUE	One540	GPON	ยะลา	เลขที่ - 43/1 สินอุทิศ เทศบาล1 สะเตง เมืองยะลา ยะลา 95000	Online	Yes	No	6.54917	101.27467`;
 
-    // --- 2. PARSER FUNCTION (แปลง TSV เป็น Object) ---
+    // --- 2. PARSER FUNCTION (UPDATED FOR SIM COLUMN FIX) ---
     function parseTsv(tsv) {
         const lines = tsv.trim().split('\n');
         // บรรทัดแรกคือ Header
         const headers = lines[0].split('\t').map(h => h.trim());
         
-        // Helper หา index ของคอลัมน์จากชื่อ (เผื่อสลับที่)
-        const getIdx = (keywords) => headers.findIndex(h => keywords.some(k => h.includes(k)));
+        // Helper ใหม่ที่ฉลาดขึ้น: หา Exact Match ก่อน ถ้าไม่เจอค่อยหาแบบ Partial Match
+        const getIdx = (keywords) => {
+            // 1. Try Exact Match First (Case Insensitive)
+            let idx = headers.findIndex(h => keywords.some(k => h.toLowerCase() === k.toLowerCase()));
+            if (idx !== -1) return idx;
+            
+            // 2. Try Partial Match if Exact not found
+            return headers.findIndex(h => keywords.some(k => h.toLowerCase().includes(k.toLowerCase())));
+        };
         
         const idIdx = getIdx(['ID_Shop', 'ID']);
         const nameIdx = getIdx(['Store_Name', 'ชื่อร้าน']);
-        const simIdx = getIdx(['SIM']);
+        const simIdx = getIdx(['SIM']); // SIM should match exactly 'SIM' now
         const provIdx = getIdx(['Province', 'จังหวัด']);
         const statusIdx = getIdx(['Status', 'สถานะ']);
         const floodIdx = getIdx(['น้ำท่วม', 'Flood']);
